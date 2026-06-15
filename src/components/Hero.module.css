@@ -1,0 +1,164 @@
+.hero {
+  padding: 8rem 0 6rem;
+  background: radial-gradient(circle at top right, rgba(79, 70, 229, 0.05), transparent 50%),
+              radial-gradient(circle at top left, rgba(14, 165, 233, 0.05), transparent 50%);
+  position: relative;
+  overflow: hidden;
+}
+
+.heroContainer {
+  display: flex;
+  align-items: center;
+  gap: 4rem;
+}
+
+.heroContent {
+  flex: 1;
+  max-width: 600px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.badgeIcon {
+  color: var(--accent);
+}
+
+.title {
+  font-size: 3.5rem;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+  color: var(--foreground);
+}
+
+.subtitle {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-bottom: 2.5rem;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.heroVisual {
+  flex: 1;
+  position: relative;
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .heroVisual {
+    display: block;
+  }
+}
+
+.visualCard {
+  background: var(--surface);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-xl);
+  padding: 1.5rem;
+  position: relative;
+  transform: perspective(1000px) rotateY(-5deg) rotateX(5deg);
+  transition: transform 0.3s ease;
+}
+
+.visualCard:hover {
+  transform: perspective(1000px) rotateY(0deg) rotateX(0deg);
+}
+
+.visualHeader {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.visualBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.visualRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+}
+
+.lineGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.line {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  width: 100%;
+}
+
+.analysisBox {
+  background: var(--surface-hover);
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.progressHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.percentage {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.progressBar {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  border-radius: 4px;
+}
