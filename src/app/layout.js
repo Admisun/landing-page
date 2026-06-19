@@ -1,5 +1,7 @@
 import { Inter } from "next/font/google";
+import { GoogleAnalytics } from '@next/third-parties/google';
 import "./globals.css";
+import Header from "@/components/Header";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -14,7 +16,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body>{children}</body>
+      <body>
+        <Header />
+        {children}
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+      </body>
     </html>
   );
 }
