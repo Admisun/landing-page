@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "next lint --max-warnings 0"
   },
   "dependencies": {
     "@google-cloud/documentai": "^9.6.2",
@@ -24,3 +24,4 @@
     "eslint-config-next": "16.2.9"
   }
 }
+
