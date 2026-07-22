@@ -1,47 +1,24 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 import styles from './Header.module.css';
 
 export default function Header() {
-  const [user, setUser] = useState(null);
-  const supabase = createClient();
-
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-    };
-
-    getUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user || null);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
-
-  const handleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-  };
+  const { user, logout } = useAuth();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout error", error);
+    }
   };
 
   return (
     <header className={styles.header}>
       <div className={`container ${styles.container}`}>
-        <div className={styles.logo}>Admisun</div>
+        <Link href="/" className={styles.logo}>Admisun</Link>
         <div className={styles.auth}>
           {user ? (
             <div className={styles.userSection}>
@@ -51,9 +28,14 @@ export default function Header() {
               </button>
             </div>
           ) : (
-            <button onClick={handleSignIn} className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-              Sign In with Google
-            </button>
+            <div className={styles.userSection}>
+              <Link href="/login" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                Log In
+              </Link>
+              <Link href="/signup" className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                Sign Up
+              </Link>
+            </div>
           )}
         </div>
       </div>

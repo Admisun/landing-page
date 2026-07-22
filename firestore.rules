@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /admission_submissions/{submissionId} {
+      allow create: if validSubmissionCreate();
+
+      allow read: if resource.data.uid == 'anonymous'
+        || (request.auth != null && resource.data.uid == request.auth.uid);
+
+      allow update: if resource.data.uid == 'anonymous'
+        || (request.auth != null && resource.data.uid == request.auth.uid);
+    }
+  }
+}
+
+function validSubmissionCreate() {
+  let data = request.resource.data;
+  return data.keys().hasAll(['uid', 'status', 'createdAt'])
+    && data.status == 'pending'
+    && (
+      (request.auth != null && data.uid == request.auth.uid)
+      || data.uid == 'anonymous'
+    );
+}

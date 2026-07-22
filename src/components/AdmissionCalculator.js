@@ -1,31 +1,76 @@
 "use client";
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useRouter } from 'next/navigation';
 import styles from './AdmissionCalculator.module.css';
-import { Calculator, ChevronRight, Loader2 } from 'lucide-react';
-import { submitAdmissionForm } from '@/app/actions/submitAdmission';
+import { Calculator, ChevronRight, Loader2, Upload } from 'lucide-react';
+import { saveAdmissionSubmission, updateSubmissionResume } from '@/lib/firebase/submissions';
+import { uploadResume, validateResumeFile } from '@/lib/firebase/storage';
+import { useAuth } from '@/context/AuthContext';
 
 export default function AdmissionCalculator() {
   const { register, handleSubmit, reset } = useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  const [resumeFile, setResumeFile] = useState(null);
+  const [resumeError, setResumeError] = useState('');
+  const { user } = useAuth();
+  const router = useRouter();
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     setStatusMsg('');
-    
-    // Create FormData for the Server Action
-    const formData = new FormData();
-    Object.keys(data).forEach(key => formData.append(key, data[key]));
+    setResumeError('');
 
-    const result = await submitAdmissionForm(formData);
+    if (resumeFile) {
+      try {
+        validateResumeFile(resumeFile);
+      } catch (err) {
+        setResumeError(err.message);
+        setIsSubmitting(false);
+        return;
+      }
+    }
     
-    if (result.success) {
-      setStatusMsg('Report request submitted successfully! AI analysis is generating...');
-      reset();
+    try {
+      const submissionId = await saveAdmissionSubmission(data, user);
+
+      if (resumeFile) {
+        const uploadResult = await uploadResume(resumeFile, submissionId, user);
+
+        const parseFormData = new FormData();
+        parseFormData.append('file', resumeFile);
+
+        const parseRes = await fetch('/api/resume/parse', {
+          method: 'POST',
+          body: parseFormData,
+        });
+
+        const parseResult = await parseRes.json();
+        let parseStatus = 'completed';
+        let parsedText = '';
+
+        if (!parseRes.ok || !parseResult.success) {
+          parseStatus = 'failed';
+          console.warn('Resume parse failed:', parseResult.error);
+        } else {
+          parsedText = parseResult.parsedText;
+        }
+
+        await updateSubmissionResume(submissionId, {
+          fileName: uploadResult.fileName,
+          mimeType: uploadResult.mimeType,
+          size: uploadResult.size,
+          storagePath: uploadResult.storagePath,
+          downloadUrl: uploadResult.downloadUrl,
+          parseStatus,
+          parsedText,
+          pageCount: parseStatus === 'completed' ? (parseResult.pageCount || 0) : 0,
+          parseError: parseStatus === 'failed' ? (parseResult.error || 'Unknown error') : null,
+        });
+      }
       
-      // Google Analytics Event Tracking (Phase 3)
+      // Google Analytics Event Tracking
       if (typeof window !== 'undefined' && window.gtag) {
         window.gtag('event', 'generate_admission_report', {
           event_category: 'engagement',
@@ -33,7 +78,17 @@ export default function AdmissionCalculator() {
           experience_tier: data.workExperience
         });
       }
-    } else {
+
+      reset();
+      setResumeFile(null);
+
+      if (user) {
+        router.push(`/report/${submissionId}`);
+      } else {
+        setStatusMsg('Report submitted! Sign in to view your personalized AI analysis.');
+      }
+    } catch (error) {
+      console.error("Error adding document: ", error);
       setStatusMsg('There was an error submitting your request. Please try again.');
     }
     
@@ -41,7 +96,7 @@ export default function AdmissionCalculator() {
   };
 
   return (
-    <section className={`section ${styles.calculatorSection}`}>
+    <section id="admission-calculator" className={`section ${styles.calculatorSection}`}>
       <div className="container">
         <div className={styles.header}>
           <div className={styles.iconWrapper}>
@@ -52,7 +107,6 @@ export default function AdmissionCalculator() {
             Enter your details below to generate a data-driven admission report and discover your chances.
           </p>
         </div>
-
         <div className={styles.calculatorCard}>
           <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
             <div className={styles.formGrid}>
@@ -106,6 +160,30 @@ export default function AdmissionCalculator() {
                   {...register('preferredCities')} 
                   className={styles.input}
                 />
+              </div>
+
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label>Resume (Optional)</label>
+                <div className={styles.fileInputWrapper}>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                    onChange={(e) => {
+                      setResumeFile(e.target.files?.[0] || null);
+                      setResumeError('');
+                    }}
+                    className={styles.fileInput}
+                    id="resume-upload"
+                  />
+                  <label htmlFor="resume-upload" className={styles.fileLabel}>
+                    <Upload size={18} />
+                    {resumeFile ? resumeFile.name : 'Choose PDF or image (max 5 MB)'}
+                  </label>
+                </div>
+                {resumeError && (
+                  <p className={styles.fileError}>{resumeError}</p>
+                )}
+                <p className={styles.fileHint}>We&apos;ll extract text from your resume to enrich your admission report.</p>
               </div>
             </div>
 

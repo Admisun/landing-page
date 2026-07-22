@@ -1,0 +1,382 @@
+.reportContainer {
+  min-height: calc(100vh - 4rem);
+  padding: 2rem 0 4rem;
+  background: var(--background);
+}
+
+.loadingState {
+  min-height: calc(100vh - 4rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.loadingSpinner {
+  animation: spin 1s linear infinite;
+  color: var(--primary);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loadingText {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.loadingSub {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.errorState {
+  min-height: calc(100vh - 4rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.errorState h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.errorState p {
+  color: var(--text-muted);
+}
+
+/* Header Section */
+.reportHeader {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.reportBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  background: rgba(52, 47, 154, 0.08);
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.reportTitle {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.reportDate {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+/* Score Card */
+.scoreCard {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  color: white;
+  text-align: center;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.scoreCard::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.scoreLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  opacity: 0.9;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.scoreValue {
+  font-size: 4.5rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.scoreUnit {
+  font-size: 1.5rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.scoreSummary {
+  font-size: 0.95rem;
+  opacity: 0.9;
+  max-width: 600px;
+  margin: 1rem auto 0;
+  line-height: 1.6;
+}
+
+/* Grid Layout */
+.reportGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+  .reportGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.75rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.cardIconWrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cardIconGreen {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.cardIconAmber {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.cardIconBlue {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+.cardIconPurple {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+}
+
+.cardTitle {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.listItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--foreground);
+  line-height: 1.5;
+}
+
+.listItem:last-child {
+  border-bottom: none;
+}
+
+.listBullet {
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.bulletGreen {
+  color: #16a34a;
+}
+
+.bulletAmber {
+  color: #d97706;
+}
+
+.bulletBlue {
+  color: #2563eb;
+}
+
+/* Colleges Table */
+.collegesCard {
+  grid-column: 1 / -1;
+}
+
+.collegeRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.collegeRow:last-child {
+  border-bottom: none;
+}
+
+.collegeName {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.collegeTier {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(52, 47, 154, 0.08);
+  color: var(--primary);
+}
+
+.chanceBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 160px;
+}
+
+.barTrack {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transition: width 0.8s ease;
+}
+
+.chancePercent {
+  font-size: 0.8rem;
+  font-weight: 700;
+  min-width: 36px;
+  text-align: right;
+  color: var(--primary);
+}
+
+/* Career Outlook */
+.careerCard {
+  grid-column: 1 / -1;
+}
+
+.careerGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .careerGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.careerStat {
+  text-align: center;
+  padding: 1.25rem;
+  background: var(--background);
+  border-radius: 0.75rem;
+}
+
+.careerStatValue {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+}
+
+.careerStatLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.recruiterTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.recruiterTag {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  background: rgba(52, 47, 154, 0.06);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* CTA */
+.ctaSection {
+  text-align: center;
+  margin-top: 3rem;
+  padding: 2.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+}
+
+.ctaTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.ctaSub {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.ctaButtons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}

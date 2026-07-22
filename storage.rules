@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /resumes/{ownerId}/{submissionId}/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == ownerId
+        || ownerId == 'anonymous';
+
+      allow write: if isValidResumeUpload(ownerId, submissionId, fileName);
+    }
+  }
+}
+
+function isValidResumeUpload(ownerId, submissionId, fileName) {
+  return request.resource.size <= 5 * 1024 * 1024
+    && request.resource.contentType.matches('application/pdf|image/jpeg|image/png|image/webp')
+    && (
+      (request.auth != null && request.auth.uid == ownerId)
+      || ownerId == 'anonymous'
+    );
+}

@@ -2,13 +2,11 @@
   background-color: var(--surface);
   position: relative;
 }
-
 .header {
   text-align: center;
   max-width: 600px;
   margin: 0 auto 3rem;
 }
-
 .iconWrapper {
   width: 56px;
   height: 56px;
@@ -20,24 +18,20 @@
   justify-content: center;
   margin: 0 auto 1.5rem;
 }
-
 .icon {
   color: var(--primary);
 }
-
 .title {
   font-size: 2.5rem;
   font-weight: 700;
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
 }
-
 .subtitle {
   color: var(--text-muted);
   font-size: 1.125rem;
   line-height: 1.6;
 }
-
 .calculatorCard {
   max-width: 800px;
   margin: 0 auto;
@@ -48,7 +42,6 @@
   box-shadow: var(--shadow-xl);
   position: relative;
 }
-
 .calculatorCard::before {
   content: '';
   position: absolute;
@@ -60,32 +53,27 @@
   border-top-left-radius: 1.5rem;
   border-top-right-radius: 1.5rem;
 }
-
 .formGrid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.5rem;
   margin-bottom: 2.5rem;
 }
-
 @media (min-width: 640px) {
   .formGrid {
     grid-template-columns: 1fr 1fr;
   }
 }
-
 .formGroup {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
-
 .formGroup label {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--foreground);
 }
-
 .input {
   padding: 0.875rem 1rem;
   border-radius: 0.5rem;
@@ -96,20 +84,55 @@
   transition: all 0.2s ease;
   font-family: inherit;
 }
-
 .input:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
-
+.fileInputWrapper {
+  position: relative;
+}
+.fileInput {
+  position: absolute;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  z-index: -1;
+}
+.fileLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px dashed var(--border);
+  background: var(--background);
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.fileLabel:hover {
+  border-color: var(--primary);
+  color: var(--foreground);
+}
+.fileHint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+.fileError {
+  font-size: 0.8125rem;
+  color: var(--accent);
+  margin: 0;
+}
 .submitContainer {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
 }
-
 .submitBtn {
   width: 100%;
   padding: 1.25rem;
@@ -118,13 +141,11 @@
   background: linear-gradient(135deg, var(--primary), var(--secondary));
   border: none;
 }
-
 .submitBtn:hover {
   opacity: 0.95;
   transform: translateY(-2px);
   box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4);
 }
-
 .secureText {
   font-size: 0.875rem;
   color: var(--text-muted);
