@@ -9,7 +9,7 @@ const SUBMISSIONS_COLLECTION = 'admission_submissions';
  * @param {import('firebase/auth').User | null} user - Current authenticated user, if any
  * @returns {Promise<string>} The new document ID
  */
-export async function saveAdmissionSubmission(formData, user = null) {
+export async function saveAdmissionSubmission(formData, user = null, hasResume = false) {
   const docRef = await addDoc(collection(db, SUBMISSIONS_COLLECTION), {
     testScore: formData.testScore || '',
     graduationScore: formData.graduationScore ? parseFloat(formData.graduationScore) : null,
@@ -18,6 +18,7 @@ export async function saveAdmissionSubmission(formData, user = null) {
     preferredCities: formData.preferredCities || '',
     uid: user ? user.uid : 'anonymous',
     status: 'pending',
+    hasResume: hasResume,
     resume: null,
     createdAt: serverTimestamp(),
   });

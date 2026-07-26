@@ -1,7 +1,13 @@
+"use client";
+
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 import styles from './Hero.module.css';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
 export default function Hero() {
+  const { user } = useAuth();
+
   return (
     <section className={styles.hero}>
       <div className={`container ${styles.heroContainer}`}>
@@ -18,13 +24,13 @@ export default function Hero() {
             AI-powered admission intelligence that analyzes your profile, predicts admission chances, and guides you to the colleges most likely to maximize your career outcomes.
           </p>
           <div className={styles.actions}>
-            <button className="btn btn-primary">
+            <a href="#admission-calculator" className="btn btn-primary">
               Check My Chances
               <ArrowRight size={18} style={{ marginLeft: '8px' }} />
-            </button>
-            <button className="btn btn-secondary">
+            </a>
+            <Link href={user ? "/dashboard" : "/login"} className="btn btn-secondary">
               Talk to AI Strategist
-            </button>
+            </Link>
           </div>
         </div>
         <div className={styles.heroVisual}>

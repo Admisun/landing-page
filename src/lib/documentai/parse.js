@@ -1,8 +1,8 @@
 import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
 
-const PROCESSOR_ID = process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID || '3a137b126cd2f719';
-const LOCATION = process.env.GOOGLE_DOCUMENT_AI_LOCATION || 'asia-south1';
-const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const PROCESSOR_ID = process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID || '8a1acab22c4a74df';
+const LOCATION = process.env.GOOGLE_DOCUMENT_AI_LOCATION || 'us';
+const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT_ID || 'admisun-503110';
 
 function getClient() {
   const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;

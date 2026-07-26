@@ -18,11 +18,19 @@ export default function Header() {
   return (
     <header className={styles.header}>
       <div className={`container ${styles.container}`}>
-        <Link href="/" className={styles.logo}>Admisun</Link>
+        <div className={styles.left}>
+          <Link href="/" className={styles.logo}>Admisun</Link>
+          {user && (
+            <nav className={styles.nav}>
+              <Link href="/dashboard" className={styles.navLink}>Dashboard</Link>
+              <Link href="/profile" className={styles.navLink}>Profile</Link>
+            </nav>
+          )}
+        </div>
         <div className={styles.auth}>
           {user ? (
             <div className={styles.userSection}>
-              <span className={styles.userName}>{user.email}</span>
+              <span className={styles.userName}>{user.displayName || user.email}</span>
               <button onClick={handleSignOut} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
                 Sign Out
               </button>

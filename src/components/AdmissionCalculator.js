@@ -33,41 +33,17 @@ export default function AdmissionCalculator() {
     }
     
     try {
-      const submissionId = await saveAdmissionSubmission(data, user);
+      const submissionId = await saveAdmissionSubmission(data, user, !!resumeFile);
 
       if (resumeFile) {
-        const uploadResult = await uploadResume(resumeFile, submissionId, user);
-
-        const parseFormData = new FormData();
-        parseFormData.append('file', resumeFile);
-
-        const parseRes = await fetch('/api/resume/parse', {
-          method: 'POST',
-          body: parseFormData,
-        });
-
-        const parseResult = await parseRes.json();
-        let parseStatus = 'completed';
-        let parsedText = '';
-
-        if (!parseRes.ok || !parseResult.success) {
-          parseStatus = 'failed';
-          console.warn('Resume parse failed:', parseResult.error);
-        } else {
-          parsedText = parseResult.parsedText;
-        }
-
-        await updateSubmissionResume(submissionId, {
-          fileName: uploadResult.fileName,
-          mimeType: uploadResult.mimeType,
-          size: uploadResult.size,
-          storagePath: uploadResult.storagePath,
-          downloadUrl: uploadResult.downloadUrl,
-          parseStatus,
-          parsedText,
-          pageCount: parseStatus === 'completed' ? (parseResult.pageCount || 0) : 0,
-          parseError: parseStatus === 'failed' ? (parseResult.error || 'Unknown error') : null,
-        });
+        setStatusMsg('Uploading resume and starting analysis...');
+        const resumeData = await uploadResume(resumeFile, submissionId, user);
+        console.log('Resume uploaded, data:', resumeData);
+        // Update Firestore submission with resume metadata
+        await updateSubmissionResume(submissionId, resumeData);
+        console.log('Submission document updated with resume info');
+        // Cloud Function storage trigger will automatically handle parsing
+        setStatusMsg('Resume uploaded! Processing will begin shortly.');
       }
       
       // Google Analytics Event Tracking
@@ -83,7 +59,7 @@ export default function AdmissionCalculator() {
       setResumeFile(null);
 
       if (user) {
-        router.push(`/report/${submissionId}`);
+        router.push(`/report?id=${submissionId}`);
       } else {
         setStatusMsg('Report submitted! Sign in to view your personalized AI analysis.');
       }

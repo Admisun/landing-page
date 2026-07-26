@@ -2,6 +2,7 @@ import { Inter } from "next/font/google";
 import { GoogleAnalytics } from '@next/third-parties/google';
 import "./globals.css";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 
 const inter = Inter({
@@ -17,10 +18,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body>
+      <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <AuthProvider>
           <Header />
-          {children}
+          <div style={{ flex: 1 }}>{children}</div>
+          <Footer />
         </AuthProvider>
         <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
       </body>

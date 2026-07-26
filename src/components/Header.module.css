@@ -27,3 +27,22 @@
   font-weight: 500;
   color: var(--text-muted);
 }
+.left {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.navLink {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+.navLink:hover {
+  color: var(--primary);
+}
