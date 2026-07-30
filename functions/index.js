@@ -1,10 +1,15 @@
 const functions = require('firebase-functions');
+const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { DocumentProcessorServiceClient } = require('@google-cloud/documentai');
 const { OpenAI } = require('openai');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const { sendSubmissionNotification } = require('./emailNotifications');
+
+const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -395,7 +400,7 @@ Based on this information, output a JSON object:
         "Begin preparing application essays highlighting your unique background",
         "Connect with alumni of target institutions via LinkedIn",
         "Look into scholarship criteria corresponding to your academic accomplishments",
-        "Book a consultation session on Admisun for counselor support"
+        ""
       ],
       careerOutlook: {
         avgSalary: submissionData.budget === "above30" || submissionData.budget === "20to30" ? "₹18-24 LPA" : "₹12-16 LPA",
@@ -566,6 +571,24 @@ exports.generateReportOnSubmission = functions.firestore
       throw e;
     }
   });
+
+/**
+ * Firestore Trigger: Sends a best-effort internal notification for every new
+ * admission submission. Notification failures never affect the saved document.
+ */
+exports.notifyOnSubmission = onDocumentCreated(
+  {
+    document: 'admission_submissions/{submissionId}',
+    secrets: [RESEND_API_KEY],
+  },
+  async (event) => {
+    const submissionId = event.params.submissionId;
+    const apiKey = RESEND_API_KEY.value() || process.env.RESEND_API_KEY;
+
+    await sendSubmissionNotification(submissionId, event.data.data(), apiKey);
+    return null;
+  }
+);
 
 /**
  * HTTPS Callable Function: Generates/regenerates the AI Admission Report on demand.

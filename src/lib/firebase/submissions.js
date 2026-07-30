@@ -17,6 +17,8 @@ export async function saveAdmissionSubmission(formData, user = null, hasResume =
     workExperience: formData.workExperience || '',
     preferredCities: formData.preferredCities || '',
     uid: user ? user.uid : 'anonymous',
+    applicantName: user?.displayName || '',
+    applicantEmail: user?.email || '',
     status: 'pending',
     hasResume: hasResume,
     resume: null,
