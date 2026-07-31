@@ -12,13 +12,20 @@ const inter = Inter({
 
 export const metadata = {
   title: "AI Admission Strategist | Know Where You'll Get In",
-  description: "AI-powered admission intelligence that analyzes your profile, predicts admission chances, and guides you to the colleges most likely to maximize your career outcomes.",
+  description:
+    "AI-powered admission intelligence that analyzes your profile, predicts admission chances, and guides you to the colleges most likely to maximize your career outcomes.",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <body
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+        }}
+      >
         <AuthProvider>
           <Header />
           <div style={{ flex: 1 }}>{children}</div>

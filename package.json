@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@google-cloud/documentai": "^9.6.2",
+    "@google/genai": "^2.13.0",
     "@next/third-parties": "^16.2.9",
     "firebase": "^12.16.0",
+    "firebase-admin": "^12.7.0",
     "lucide-react": "^1.18.0",
     "next": "16.2.9",
     "openai": "^6.44.0",
@@ -21,8 +23,12 @@
     "react-hook-form": "^7.79.0"
   },
   "devDependencies": {
+    "@types/node": "^20.17.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
-    "gh-pages": "^6.3.0"
+    "gh-pages": "^6.3.0",
+    "typescript": "^5.7.3"
   }
 }
