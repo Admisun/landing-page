@@ -1,22 +1,22 @@
 :root {
   --background: #f8fafc;
-  --foreground: #ffffff;
-  
+  --foreground: #111827;
   /* Brand Colors */
   --primary: #342f9a;
   --primary-hover: #4338ca;
   --secondary: #0ea5e9;
   --accent: #f43f5e;
-  
+
   /* Surfaces */
   --surface: #ffffff;
   --surface-hover: #f1f5f9;
   --border: #e2e8f0;
-  
+  --card-bg: #f9fafb; /* New card background for light mode */
+
   /* Text */
   --text-muted: #64748b;
   --text-inverse: #ffffff;
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -28,11 +28,12 @@
   :root {
     --background: #020617;
     --foreground: #f8fafc;
-    
+
     --surface: #0f172a;
     --surface-hover: #1e293b;
     --border: #1e293b;
-    
+    --card-bg: #1f2937; /* New card background for dark mode */
+
     --text-muted: #94a3b8;
   }
 }

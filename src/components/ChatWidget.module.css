@@ -1,0 +1,104 @@
+.floatingButton {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  border-radius: 9999px;
+  width: 56px;
+  height: 56px;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 1000;
+  transition: background 0.2s, transform 0.2s;
+}
+.floatingButton:hover {
+  background: var(--primary-variant);
+  transform: translateY(-2px);
+}
+.chatContainer {
+  position: fixed;
+  bottom: 100px;
+  right: 24px;
+  width: 320px;
+  max-height: 70vh;
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 999;
+}
+.chatHeader {
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 8px 12px;
+  font-weight: 600;
+}
+.chatMessages {
+  flex: 1;
+  padding: 8px 12px;
+  overflow-y: auto;
+}
+.userMessage {
+  text-align: right;
+  margin: 4px 0;
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 6px 10px;
+  border-radius: 12px 12px 0 12px;
+  align-self: flex-end;
+}
+.assistantMessage {
+  text-align: left;
+  margin: 4px 0;
+  background: var(--surface-variant);
+  color: var(--foreground);
+  padding: 6px 10px;
+  border-radius: 12px 12px 12px 0;
+  align-self: flex-start;
+}
+.loadingMessage {
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+}
+.chatInputWrapper {
+  display: flex;
+  padding: 8px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.chatInput {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-right: 8px;
+  background: var(--background);
+  color: var(--foreground);
+}
+.sendButton {
+  background: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (max-width: 480px) {
+  .chatContainer {
+    width: 90%;
+    right: 5%;
+    bottom: 80px;
+  }
+}
