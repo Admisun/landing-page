@@ -22,7 +22,7 @@ export default function Header() {
           <Link href="/" className={styles.logo}>Admisun</Link>
           {user && (
             <nav className={styles.nav}>
-              <Link href="/dashboard" className={styles.navLink}>Dashboard</Link>
+              <Link href="/dashboard" className={styles.navLink}>Submission</Link>
               <Link href="/profile" className={styles.navLink}>Profile</Link>
             </nav>
           )}

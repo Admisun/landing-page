@@ -53,9 +53,16 @@ export async function uploadResume(file, submissionId, user = null) {
 
   const downloadUrl = await getDownloadURL(storageRef);
 
-  return {
+  const resumeMeta = {
     storagePath,
     downloadUrl,
+  };
+
+  // NOTE: Parsing is now handled server‑side via /api/ai/parse-resume.
+  // This function only returns the storage metadata.
+
+  return {
+    ...resumeMeta,
     fileName: file.name,
     mimeType: file.type,
     size: file.size,

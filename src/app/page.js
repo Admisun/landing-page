@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <main>
       <Hero />
-      <AdmissionCalculator />
+      <AdmissionCalculator hidePrevious={true} />
       <AIStrategist />
       <ExploreFuture />
     </main>

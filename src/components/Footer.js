@@ -21,7 +21,7 @@ export default function Footer() {
             <div className={styles.linkCol}>
               <h4 className={styles.colTitle}>Platform</h4>
               <Link href="/#admission-calculator" className={styles.link}>Calculator</Link>
-              <Link href="/dashboard" className={styles.link}>Dashboard</Link>
+              <Link href="/dashboard" className={styles.link}>Submission</Link>
               <Link href="/profile" className={styles.link}>Profile</Link>
             </div>
 

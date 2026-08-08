@@ -1,14 +1,18 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import styles from './AdmissionCalculator.module.css';
 import { Calculator, ChevronRight, Loader2, Upload } from 'lucide-react';
 import { saveAdmissionSubmission, updateSubmissionResume } from '@/lib/firebase/submissions';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
+    
+
 import { uploadResume, validateResumeFile } from '@/lib/firebase/storage';
 import { useAuth } from '@/context/AuthContext';
 
-export default function AdmissionCalculator() {
+export default function AdmissionCalculator({ hidePrevious }) {
   const { register, handleSubmit, reset } = useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
@@ -16,6 +20,22 @@ export default function AdmissionCalculator() {
   const [resumeError, setResumeError] = useState('');
   const { user } = useAuth();
   const router = useRouter();
+  const [previousSubmissions, setPreviousSubmissions] = useState([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchSubmissions = async () => {
+      try {
+        const q = query(collection(db, 'admission_submissions'), where('uid', '==', user.uid), orderBy('createdAt', 'desc'));
+        const snapshot = await getDocs(q);
+        const subs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setPreviousSubmissions(subs);
+      } catch (err) {
+        console.error('Error fetching submissions:', err);
+      }
+    };
+    fetchSubmissions();
+  }, [user]);
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
@@ -33,19 +53,33 @@ export default function AdmissionCalculator() {
     }
     
     try {
+      // First, save the admission submission (without resume data)
       const submissionId = await saveAdmissionSubmission(data, user, !!resumeFile);
 
+      let parsedResume = null;
       if (resumeFile) {
-        setStatusMsg('Uploading resume and starting analysis...');
-        const resumeData = await uploadResume(resumeFile, submissionId, user);
-        console.log('Resume uploaded, data:', resumeData);
-        // Update Firestore submission with resume metadata
-        await updateSubmissionResume(submissionId, resumeData);
-        console.log('Submission document updated with resume info');
-        // Cloud Function storage trigger will automatically handle parsing
-        setStatusMsg('Resume uploaded! Processing will begin shortly.');
+        setStatusMsg('Uploading resume...');
+        // Upload resume to Firebase Storage and get download URL
+        const uploadResult = await uploadResume(resumeFile);
+        const downloadUrl = uploadResult.downloadUrl;
+
+        setStatusMsg('Parsing resume with Vertex AI...');
+        const parseResponse = await fetch('/api/ai/parse-resume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ downloadUrl, submissionId })
+        });
+        if (!parseResponse.ok) {
+          const err = await parseResponse.json();
+          console.error('Resume parsing error:', err);
+          setStatusMsg('Resume uploaded but parsing failed.');
+        } else {
+          const result = await parseResponse.json();
+          parsedResume = result.parsedData;
+          console.log('Parsed resume data:', parsedResume);
+        }
       }
-      
+
       // Google Analytics Event Tracking
       if (typeof window !== 'undefined' && window.gtag) {
         window.gtag('event', 'generate_admission_report', {
@@ -59,7 +93,7 @@ export default function AdmissionCalculator() {
       setResumeFile(null);
 
       if (user) {
-        router.push(`/report?id=${submissionId}`);
+        router.push(`/dashboard?id=${submissionId}`);
       } else {
         setStatusMsg('Report submitted! Sign in to view your personalized AI analysis.');
       }
@@ -74,7 +108,8 @@ export default function AdmissionCalculator() {
   return (
     <section id="admission-calculator" className={`section ${styles.calculatorSection}`}>
       <div className="container">
-        <div className={styles.header}>
+        
+<div className={styles.header}>
           <div className={styles.iconWrapper}>
             <Calculator className={styles.icon} size={24} />
           </div>
@@ -128,6 +163,43 @@ export default function AdmissionCalculator() {
                 </select>
               </div>
               
+              <div className={styles.formGroup}>
+                <label>Target Degree</label>
+                <select {...register('targetDegree')} className={styles.input}>
+                  <option value="">Select Degree</option>
+                  <option value="MBA">MBA (Master of Business Administration)</option>
+                  <option value="MS">MS (Master of Science)</option>
+                  <option value="MTech">M.Tech (Master of Technology)</option>
+                  <option value="BBA">BBA (Bachelor of Business Administration)</option>
+                  <option value="BTech">B.Tech (Bachelor of Technology)</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Target Country</label>
+                <select {...register('targetCountry')} className={styles.input}>
+                  <option value="">Select Country</option>
+                  <option value="India">India</option>
+                  <option value="USA">USA</option>
+                  <option value="UK">UK</option>
+                  <option value="Canada">Canada</option>
+                  <option value="Germany">Germany</option>
+                  <option value="Australia">Australia</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label>Preferred Universities</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Stanford University, Harvard, IIM Ahmedabad, IIT Bombay"
+                  {...register('preferredUniversities')} 
+                  className={styles.input}
+                />
+              </div>
+
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                 <label>Preferred Cities</label>
                 <input 
