@@ -8,9 +8,9 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { sendSubmissionNotification } = require('./emailNotifications');
-
+const { GoogleGenAI } = require('@google/genai');
+const cors = require('cors')({ origin: true });
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
-
 admin.initializeApp();
 const db = admin.firestore();
 
@@ -626,5 +626,89 @@ exports.generateReport = functions.https.onCall(async (data, context) => {
   } catch (error) {
     console.error('On-call generateReport error:', error);
     throw new functions.https.HttpsError('internal', error.message || 'Failed to generate report.');
-  }
+  } 
+ 
+
 });
+exports.admisunChat = functions.https.onRequest(
+  async (req, res) => {
+    return cors(req, res, async () => {
+      if (req.method !== 'POST') {
+        return res.status(405).json({
+          error: 'Method not allowed',
+        });
+      }
+
+      try {
+        const { message } = req.body || {};
+
+        if (!message || typeof message !== 'string') {
+          return res.status(400).json({
+            error: 'message is required',
+          });
+        }
+
+        const genAI = new GoogleGenAI({
+          vertexai: true,
+          project: 'admisun-503110',
+          location: 'us-central1',
+        });
+
+        const SYSTEM_PROMPT = `
+You are Admisun AI, an admissions assistant for students.
+
+Help users with:
+- university admissions
+- applications
+- eligibility
+- deadlines
+- scholarships
+- resumes
+- courses
+- universities
+- education-related questions
+
+If a question is unrelated to education or university admissions,
+politely explain that you are designed specifically to assist with
+higher education and admissions.
+
+Give clear, useful and concise answers.
+Do not invent university policies, deadlines or admission requirements.
+If information may vary by university or year, say so.
+        `.trim();
+
+        const result = await genAI.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: message }],
+            },
+          ],
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+          },
+        });
+
+        const responseText = result.text?.trim();
+
+        if (!responseText) {
+          return res.status(500).json({
+            error: 'Vertex AI returned an empty response.',
+          });
+        }
+
+        return res.status(200).json({
+          response: responseText,
+        });
+      } catch (error) {
+        console.error('========== ADM ISUN CHAT ERROR ==========');
+        console.error(error);
+
+        return res.status(500).json({
+          error: 'Unable to generate an AI response.',
+        });
+      }
+    });
+  }
+);
