@@ -11,6 +11,7 @@ const { sendSubmissionNotification } = require('./emailNotifications');
 const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors')({ origin: true });
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
+
 admin.initializeApp();
 const db = admin.firestore();
 
@@ -49,9 +50,129 @@ function getOpenAIClient() {
  * Normalizes text extracted from Document AI OCR into the requested structured JSON format.
  */
 async function parseResumeTextWithAI(rawText) {
+  if (!rawText || !rawText.trim()) {
+    throw new Error('No resume text was extracted from the document.');
+  }
+
+  const genAI = new GoogleGenAI({
+    vertexai: true,
+    project: 'admisun-503110',
+    location: 'us-central1',
+  });
+
+  const prompt = `
+You are an expert resume parsing system.
+
+Analyze the following OCR text extracted from a student's resume and convert it into a structured JSON object.
+
+IMPORTANT:
+- Extract only information actually present in the resume.
+- Do not invent information.
+- Use null when a single value is unavailable.
+- Use [] when a list has no information.
+- Preserve the original meaning of the resume.
+- Return ONLY valid JSON.
+- Do not use markdown.
+- Do not include explanations outside the JSON.
+
+Return exactly this structure:
+
+{
+  "personalInfo": {
+    "fullName": "string or null",
+    "email": "string or null",
+    "phoneNumber": "string or null",
+    "address": "string or null",
+    "dateOfBirth": "string or null",
+    "nationality": "string or null",
+    "linkedin": "string or null",
+    "github": "string or null",
+    "portfolioWebsite": "string or null"
+  },
+  "education": [
+    {
+      "degree": "string or null",
+      "specializationMajor": "string or null",
+      "universityCollege": "string or null",
+      "graduationYear": "string or null",
+      "gpa": "string or null",
+      "percentage": "string or null"
+    }
+  ],
+  "experience": [
+    {
+      "company": "string or null",
+      "role": "string or null",
+      "startDate": "string or null",
+      "endDate": "string or null",
+      "description": "string or null"
+    }
+  ],
+  "skills": [
+    "string"
+  ],
+  "projects": [
+    {
+      "name": "string or null",
+      "description": "string or null",
+      "technologies": ["string"]
+    }
+  ],
+  "certifications": [
+    "string"
+  ],
+  "achievements": [
+    "string"
+  ]
+}
+
+RESUME OCR TEXT:
+${rawText}
+`.trim();
+
+  try {
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const responseText = result.text?.trim();
+
+    if (!responseText) {
+      throw new Error('Vertex AI returned an empty resume parsing response.');
+    }
+
+    try {
+      return JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse Vertex AI resume JSON:', responseText);
+      throw new Error('Vertex AI returned invalid JSON for the resume.');
+    }
+  } catch (error) {
+    console.error('Vertex AI resume parsing error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Normalizes text extracted from Document AI OCR using OpenAI.
+ */
+async function parseResumeTextWithOpenAI(rawText) {
   const openai = getOpenAIClient();
   if (!openai) {
-    return generateMockParsedResume(rawText);
+    throw new Error('OpenAI client is not configured.');
   }
 
   const prompt = `You are an expert AI resume parsing system. Analyze the following raw text extracted from a student's resume and parse it into a structured JSON object.
@@ -627,9 +748,8 @@ exports.generateReport = functions.https.onCall(async (data, context) => {
     console.error('On-call generateReport error:', error);
     throw new functions.https.HttpsError('internal', error.message || 'Failed to generate report.');
   } 
- 
-
 });
+
 exports.admisunChat = functions.https.onRequest(
   async (req, res) => {
     return cors(req, res, async () => {
