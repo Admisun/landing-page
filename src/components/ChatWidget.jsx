@@ -13,22 +13,15 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false);
 
   const toggleChat = () => {
-    setOpen((previous) => !previous);
+    setOpen((prev) => !prev);
   };
 
   const sendMessage = async () => {
-    const trimmedMessage = input.trim();
+    const message = input.trim();
 
-    if (!trimmedMessage || loading) {
-      return;
-    }
+    if (!message || loading) return;
 
-    const userMsg = {
-      role: "user",
-      text: trimmedMessage,
-    };
-
-    setMessages((previous) => [...previous, userMsg]);
+    setMessages((prev) => [...prev, { role: "user", text: message }]);
     setInput("");
     setLoading(true);
 
@@ -39,7 +32,7 @@ export default function ChatWidget() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: trimmedMessage,
+          message,
         }),
       });
 
@@ -51,25 +44,25 @@ export default function ChatWidget() {
         );
       }
 
-      if (data?.response) {
-        setMessages((previous) => [
-          ...previous,
-          {
-            role: "assistant",
-            text: data.response,
-          },
-        ]);
-      } else {
-        throw new Error("No response returned from Admisun AI.");
+      if (!data?.response) {
+        throw new Error("The AI returned an empty response.");
       }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: data.response,
+        },
+      ]);
     } catch (error) {
       console.error("Admisun AI error:", error);
 
-      setMessages((previous) => [
-        ...previous,
+      setMessages((prev) => [
+        ...prev,
         {
           role: "assistant",
-          text: "Sorry, I couldn't process that request right now. Please try again.",
+          text: "Sorry, I couldn't generate a response right now. Please try again.",
         },
       ]);
     } finally {
@@ -80,45 +73,33 @@ export default function ChatWidget() {
   return (
     <div>
       <button
-        type="button"
         onClick={toggleChat}
         className={styles.floatingButton}
-        aria-label="Open Admisun AI chat"
+        aria-label="Open chat"
       >
         💬
       </button>
 
       {open && (
         <div className={styles.chatContainer}>
-          <div className={styles.chatHeader}>
-            Admisun AI
-          </div>
+          <div className={styles.chatHeader}>Admisun AI</div>
 
           <div className={styles.chatMessages}>
-            {messages.length === 0 && (
-              <div className={styles.assistantMessage}>
-                Hi! I&apos;m Admisun AI. How can I help with your university
-                admissions?
-              </div>
-            )}
-
-            {messages.map((message, index) => (
+            {messages.map((msg, index) => (
               <div
-                key={`${message.role}-${index}`}
+                key={index}
                 className={
-                  message.role === "user"
+                  msg.role === "user"
                     ? styles.userMessage
                     : styles.assistantMessage
                 }
               >
-                {message.text}
+                {msg.text}
               </div>
             ))}
 
             {loading && (
-              <div className={styles.loadingMessage}>
-                …
-              </div>
+              <div className={styles.loadingMessage}>…</div>
             )}
           </div>
 
@@ -129,22 +110,20 @@ export default function ChatWidget() {
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
-                  event.preventDefault();
                   sendMessage();
                 }
               }}
-              placeholder="Ask about admissions..."
+              placeholder="Type a message…"
               className={styles.chatInput}
               disabled={loading}
             />
 
             <button
-              type="button"
               onClick={sendMessage}
               disabled={loading || !input.trim()}
               className={styles.sendButton}
             >
-              {loading ? "..." : "Send"}
+              Send
             </button>
           </div>
         </div>
