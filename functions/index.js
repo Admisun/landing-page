@@ -614,22 +614,40 @@ exports.parseResumeOnUpload = functions.storage.object().onFinalize(async (objec
     }
 
     // Save parsed resume data to the Admission Submission
-    const submissionRef = db.collection('admission_submissions').doc(submissionId);
-    await submissionRef.set({
-      resume: {
-        fileName,
-        mimeType: contentType,
-        size: Number(object.size),
-        storagePath: filePath,
-        parseStatus: 'completed',
-        parsedData: parsedData,
-        parsedText: extractedText,
-        pageCount,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      }
-    }, { merge: true });
-    console.log(`Updated admission_submissions/${submissionId} with parsed resume details.`);
+  // Save parsed resume to parsed_resumes
+const parsedResumeRef = db.collection('parsed_resumes').doc(submissionId);
 
+await parsedResumeRef.set({
+  ...parsedData,
+  submissionId,
+  uid,
+  fileName,
+  mimeType: contentType,
+  storagePath: filePath,
+  parsedText: extractedText,
+  pageCount,
+  updatedAt: admin.firestore.FieldValue.serverTimestamp()
+}, { merge: true });
+
+console.log(`Saved parsed resume to parsed_resumes/${submissionId}`);
+
+// Save parsed resume data to the admission submission
+const submissionRef = db.collection('admission_submissions').doc(submissionId);
+
+await submissionRef.set({
+  resumeId: submissionId,
+  resume: {
+    fileName,
+    mimeType: contentType,
+    size: Number(object.size),
+    storagePath: filePath,
+    parseStatus: 'completed',
+    parsedData,
+    parsedText: extractedText,
+    pageCount,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  }
+}, { merge: true });
     // Fetch the updated submission data and automatically generate the admission report!
     const submissionDoc = await submissionRef.get();
     const submissionData = submissionDoc.data();
@@ -644,6 +662,7 @@ exports.parseResumeOnUpload = functions.storage.object().onFinalize(async (objec
     try {
       const submissionRef = db.collection('admission_submissions').doc(submissionId);
       await submissionRef.set({
+        resumeId: submissionId,
         resume: {
           fileName: path.basename(filePath),
           mimeType: contentType,
@@ -832,3 +851,81 @@ If information may vary by university or year, say so.
     });
   }
 );
+/**
+ * HTTPS Function: Waits for the existing Storage resume parser
+ * to finish processing a submission.
+ *
+ * The actual parsing is still handled by parseResumeOnUpload.
+ */
+exports.parseResume = functions
+  .runWith({ timeoutSeconds: 180 })
+  .https.onRequest(async (req, res) => {
+    return cors(req, res, async () => {
+      if (req.method !== 'POST') {
+        return res.status(405).json({
+          error: 'Method not allowed',
+        });
+      }
+
+      try {
+        const { submissionId } = req.body || {};
+
+        if (!submissionId) {
+          return res.status(400).json({
+            error: 'submissionId is required',
+          });
+        }
+
+        const submissionRef = db
+          .collection('admission_submissions')
+          .doc(submissionId);
+
+        const maxWaitTime = 150000; // 2.5 minutes
+        const pollInterval = 3000;
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < maxWaitTime) {
+          const snapshot = await submissionRef.get();
+
+          if (!snapshot.exists) {
+            return res.status(404).json({
+              error: 'Submission not found.',
+            });
+          }
+
+          const data = snapshot.data();
+          const resume = data.resume;
+
+          if (resume?.parseStatus === 'completed') {
+            return res.status(200).json({
+              success: true,
+              parsedData: resume.parsedData || null,
+            });
+          }
+
+          if (resume?.parseStatus === 'failed') {
+            return res.status(500).json({
+              error: resume.parseError || 'Resume parsing failed.',
+            });
+          }
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, pollInterval)
+          );
+        }
+
+        return res.status(202).json({
+          success: false,
+          pending: true,
+          message: 'Resume parsing is still in progress.',
+        });
+      } catch (error) {
+        console.error('========== RESUME PARSE WAIT ERROR ==========');
+        console.error(error);
+
+        return res.status(500).json({
+          error: 'Unable to check resume parsing status.',
+        });
+      }
+    });
+  });

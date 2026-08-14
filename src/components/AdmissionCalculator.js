@@ -60,24 +60,34 @@ export default function AdmissionCalculator({ hidePrevious }) {
       if (resumeFile) {
         setStatusMsg('Uploading resume...');
         // Upload resume to Firebase Storage and get download URL
-        const uploadResult = await uploadResume(resumeFile);
+       const uploadResult = await uploadResume(resumeFile, submissionId, user);
         const downloadUrl = uploadResult.downloadUrl;
 
-        setStatusMsg('Parsing resume with Vertex AI...');
-        const parseResponse = await fetch('/api/ai/parse-resume', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ downloadUrl, submissionId })
-        });
-        if (!parseResponse.ok) {
-          const err = await parseResponse.json();
-          console.error('Resume parsing error:', err);
-          setStatusMsg('Resume uploaded but parsing failed.');
-        } else {
-          const result = await parseResponse.json();
-          parsedResume = result.parsedData;
-          console.log('Parsed resume data:', parsedResume);
-        }
+       setStatusMsg('Parsing resume with Vertex AI...');
+
+const parseResponse = await fetch(
+  'https://us-central1-admisun.cloudfunctions.net/parseResume',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ submissionId })
+  }
+);
+
+const result = await parseResponse.json();
+
+if (!parseResponse.ok) {
+  console.error('Resume parsing error:', result);
+  setStatusMsg('Resume uploaded but parsing failed.');
+} else if (result.pending) {
+  console.warn('Resume parsing is still in progress.');
+  setStatusMsg('Resume uploaded. Parsing is still in progress.');
+} else {
+  parsedResume = result.parsedData;
+  console.log('Parsed resume data:', parsedResume);
+}
       }
 
       // Google Analytics Event Tracking

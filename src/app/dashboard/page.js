@@ -360,36 +360,46 @@ function DashboardContent() {
                         <p style={{ color: 'var(--accent)', fontSize: '0.875rem' }}>{resumeError}</p>
                       )}
 
-                      {!loadingResume && parsedResume && (
-                        <div className={styles.resumeDetails}>
-                          {/* Personal Info */}
-                          {parsedResume.personalInfo && (
-                            <div className={styles.resumeBlock}>
-                              <h4 className={styles.blockTitle}><User size={14} /> Personal Information</h4>
-                              <div className={styles.blockGrid}>
-                                {parsedResume.personalInfo.name && (
-                                  <div>
-                                    <span className={styles.blockLabel}>Name:</span> {parsedResume.personalInfo.name}
-                                  </div>
-                                )}
-                                {parsedResume.personalInfo.email && (
-                                  <div>
-                                    <span className={styles.blockLabel}>Email:</span> {parsedResume.personalInfo.email}
-                                  </div>
-                                )}
-                                {parsedResume.personalInfo.phone && (
-                                  <div>
-                                    <span className={styles.blockLabel}>Phone:</span> {parsedResume.personalInfo.phone}
-                                  </div>
-                                )}
-                                {parsedResume.personalInfo.location && (
-                                  <div>
-                                    <span className={styles.blockLabel}>Location:</span> {parsedResume.personalInfo.location}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
+           {!loadingResume && parsedResume && (
+  <div className={styles.resumeDetails}>
+    {/* Personal Info */}
+    {parsedResume.personalInfo && (
+      <div className={styles.resumeBlock}>
+        <h4 className={styles.blockTitle}>
+          <User size={14} /> Personal Information
+        </h4>
+
+        <div className={styles.blockGrid}>
+          {parsedResume.personalInfo.fullName && (
+            <div>
+              <span className={styles.blockLabel}>Name:</span>{" "}
+              {parsedResume.personalInfo.fullName}
+            </div>
+          )}
+
+          {parsedResume.personalInfo.email && (
+            <div>
+              <span className={styles.blockLabel}>Email:</span>{" "}
+              {parsedResume.personalInfo.email}
+            </div>
+          )}
+
+          {parsedResume.personalInfo.phoneNumber && (
+            <div>
+              <span className={styles.blockLabel}>Phone:</span>{" "}
+              {parsedResume.personalInfo.phoneNumber}
+            </div>
+          )}
+
+          {parsedResume.personalInfo.address && (
+            <div>
+              <span className={styles.blockLabel}>Location:</span>{" "}
+              {parsedResume.personalInfo.address}
+            </div>
+          )}
+        </div>
+      </div>
+    )}
 
                           {/* Education */}
                           {parsedResume.education && parsedResume.education.length > 0 && (
@@ -399,10 +409,10 @@ function DashboardContent() {
                                 {parsedResume.education.map((edu, idx) => (
                                   <div key={idx} className={styles.blockItem}>
                                     <div className={styles.blockItemHeader}>
-                                      <strong>{edu.degree || 'Degree'}</strong> {edu.major ? `in ${edu.major}` : ''}
+                                      <strong>{edu.degree || 'Degree'}</strong> {edu.specializationMajor ? `in ${edu.specializationMajor}` : ''}
                                     </div>
                                     <div className={styles.blockItemSub}>
-                                      {edu.institution || 'Institution'} {edu.graduationYear ? `(${edu.graduationYear})` : ''}
+                                      {edu.universityCollege || 'Institution'} {edu.graduationYear ? `(${edu.graduationYear})` : ''}
                                     </div>
                                     {edu.gpa && <div className={styles.blockItemMeta}>GPA / Score: {edu.gpa}</div>}
                                   </div>
