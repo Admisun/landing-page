@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { parseResumeContent } from '@/lib/ai/resumeParser';
+import { generateUniversityRecommendations } from '@/lib/ai/universityRecommender';
 
 /**
  * Downloads a file from Firebase Storage and converts it to base64.
@@ -75,20 +76,44 @@ export async function POST(req) {
       createdAt: FieldValue.serverTimestamp(),
     });
 
+    // Fetch submission data to generate university recommendations with Vertex AI
+    let report = null;
+    try {
+      const submissionSnap = await adminDb
+        .collection('admission_submissions')
+        .doc(submissionId)
+        .get();
+
+      if (submissionSnap.exists) {
+        const subData = submissionSnap.data();
+        report = await generateUniversityRecommendations(subData, parsedData);
+      }
+    } catch (reportErr) {
+      console.error('Failed to generate university recommendations in parse route:', reportErr);
+    }
+
     // Update submission
+    const updatePayload = {
+      resumeId: resumeRef.id,
+      status: 'completed',
+      hasResume: true,
+    };
+
+    if (report) {
+      updatePayload.report = report;
+      updatePayload.reportGeneratedAt = FieldValue.serverTimestamp();
+    }
+
     await adminDb
       .collection('admission_submissions')
       .doc(submissionId)
-      .update({
-        resumeId: resumeRef.id,
-        status: 'completed',
-        hasResume: true,
-      });
+      .update(updatePayload);
 
     return NextResponse.json({
       success: true,
       resumeId: resumeRef.id,
       parsedData,
+      report,
     });
   } catch (error) {
     console.error('Error during server-side resume parsing:', error);

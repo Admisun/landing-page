@@ -63,7 +63,7 @@ export default function AdmissionCalculator({ hidePrevious }) {
        const uploadResult = await uploadResume(resumeFile, submissionId, user);
         const downloadUrl = uploadResult.downloadUrl;
 
-       setStatusMsg('Parsing resume with Vertex AI...');
+      // setStatusMsg('Parsing resume with Vertex AI...');
 
 const parseResponse = await fetch(
   'https://us-central1-admisun.cloudfunctions.net/parseResume',

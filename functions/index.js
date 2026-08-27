@@ -428,117 +428,179 @@ function generateMockParsedResume(rawText) {
  * Feasibility Report Generator Helper
  */
 async function generateFeasibilityReport(submissionRef, submissionData, parsedResumeData = null) {
-  const openai = getOpenAIClient();
-  let report;
-
-  const score = submissionData.graduationScore || 75;
-  const probability = Math.min(95, Math.max(40, score + Math.floor(Math.random() * 15)));
+  const genAI = new GoogleGenAI({
+    vertexai: true,
+    project: PROJECT_ID,
+    location: 'us-central1',
+  });
 
   const budgetLabels = {
     under10: "Under ₹10 Lakhs",
-    "10to20": "₹10-20 Lakhs",
-    "20to30": "₹20-30 Lakhs",
-    above30: "Above ₹30 Lakhs"
+    "10to20": "₹10 - 20 Lakhs",
+    "20to30": "₹20 - 30 Lakhs",
+    above30: "Above ₹30 Lakhs",
   };
 
   const experienceLabels = {
-    "0": "Fresher",
-    "1to3": "1-3 years",
-    "3to5": "3-5 years",
-    "5plus": "5+ years"
+    "0": "Fresher (0 years)",
+    "1to3": "1 - 3 years",
+    "3to5": "3 - 5 years",
+    "5plus": "5+ years",
   };
 
-  if (openai) {
-    const resumeContext = parsedResumeData
-      ? `\nStudent Parsed Resume Data: ${JSON.stringify(parsedResumeData)}`
-      : '';
+  const resumeContext = parsedResumeData
+    ? `\n\nPARSED RESUME DETAILS:
+- Candidate Name: ${parsedResumeData.personalInfo?.fullName || parsedResumeData.personalInfo?.name || "Not provided"}
+- Location: ${parsedResumeData.personalInfo?.address || parsedResumeData.personalInfo?.location || "Not provided"}
+- Education: ${JSON.stringify(parsedResumeData.education || [])}
+- Work Experience: ${JSON.stringify(parsedResumeData.experience || parsedResumeData.workExperience || [])}
+- Skills: ${JSON.stringify(parsedResumeData.skills || [])}
+- Projects: ${JSON.stringify(parsedResumeData.projects || [])}
+- Certifications: ${JSON.stringify(parsedResumeData.certifications || [])}
+- Achievements: ${JSON.stringify(parsedResumeData.achievements || [])}
+- Extracurriculars: ${JSON.stringify(parsedResumeData.extracurricularActivities || [])}`
+    : "\n\nPARSED RESUME: None uploaded.";
 
-    const prompt = `You are an expert AI education strategist for university admissions.
-Analyze this student's submission profile and provide an admissions feasibility and probability report in JSON format.
+  const SYSTEM_PROMPT = `You are an expert AI university admissions strategist for Admisun.
+Your task is to analyze a student's profile (academic records, test scores, degree preferences, target country, budget, work experience, and parsed resume if provided) and recommend suitable, realistic universities.
 
-Submission Profile:
-- Standardized Test Score: ${submissionData.testScore || 'Not provided'}
-- Graduation Score: ${submissionData.graduationScore || 'Not provided'}%
-- Work Experience Duration: ${experienceLabels[submissionData.workExperience] || 'Not provided'}
-- Budget Bracket: ${budgetLabels[submissionData.budget] || 'Not provided'}
-- Preferred Cities: ${submissionData.preferredCities || 'Not provided'}
+IMPORTANT RULES:
+1. Base all analysis and fit reasons ONLY on the student's provided information and parsed resume.
+2. DO NOT invent or hallucinate scores, degrees, extracurriculars, or achievements that are not provided.
+3. Recommend 4 to 8 universities that match their target country/region, degree/major, budget tier, and academic/professional background.
+4. Categorize universities into realistic fit categories: "Dream / Reach", "Target / Match", and "Safe".
+5. For each university, provide a clear and specific "fitReason" explaining WHY this university matches the student's profile (mentioning relevant aspects like their GPA/percentage, test score, field of study, budget, skills, projects, or work experience).
+6. Return ONLY a single valid JSON object strictly adhering to the requested schema. No markdown formatting outside the JSON, no backticks.`;
+
+  const prompt = `
+STUDENT ADMISSION PROFILE:
+- Target Degree: ${submissionData.targetDegree || "Not specified"}
+- Target Country: ${submissionData.targetCountry || "Not specified"}
+- Preferred Universities: ${submissionData.preferredUniversities || "Not specified"}
+- Preferred Cities / Locations: ${submissionData.preferredCities || "Not specified"}
+- Undergraduate / Academic Score: ${submissionData.graduationScore ? `${submissionData.graduationScore}%` : "Not provided"}
+- Standardized Test Score (CAT/GMAT/GRE/SAT): ${submissionData.testScore || "Not provided"}
+- Budget Tier: ${budgetLabels[submissionData.budget] || submissionData.budget || "Not specified"}
+- Work Experience Duration: ${experienceLabels[submissionData.workExperience] || submissionData.workExperience || "Not specified"}
 ${resumeContext}
 
-Based on this information, output a JSON object:
+Analyze this student's complete profile and generate personalized university recommendations.
+Return a valid JSON object matching exactly this structure:
+
 {
-  "overallScore": <number 1-100 indicating general admission readiness/strength>,
-  "summary": "<2-3 sentence overview of their candidacy and prospects>",
-  "strengths": ["<strength1>", "<strength2>", "<strength3>"],
-  "improvements": ["<improvement1>", "<improvement2>", "<improvement3>"],
-  "recommendedColleges": [
-    {"name": "<college 1>", "chance": <probability 1-100>, "tier": "Tier 1"},
-    {"name": "<college 2>", "chance": <probability 1-100>, "tier": "Tier 1"},
-    {"name": "<college 3>", "chance": <probability 1-100>, "tier": "Tier 2"},
-    {"name": "<college 4>", "chance": <probability 1-100>, "tier": "Tier 2"}
+  "overallScore": <number 1-100 representing general admission profile strength>,
+  "profileSummary": "<2-3 sentence comprehensive summary of the student's academic standing, strengths, and profile readiness>",
+  "strengths": [
+    "<Specific strength grounded in student's actual grades, test scores, skills, or experience>",
+    "<Another specific strength from their profile>",
+    "<Third specific strength>"
   ],
-  "nextSteps": ["<step1>", "<step2>", "<step3>", "<step4>"],
+  "improvements": [
+    "<Actionable recommendation to improve admission chances>",
+    "<Second actionable recommendation>",
+    "<Third actionable recommendation>"
+  ],
+  "recommendedUniversities": [
+    {
+      "name": "<Official University Name>",
+      "country": "<Country>",
+      "city": "<City / State>",
+      "program": "<Specific Degree or Program matching their target>",
+      "category": "<Must be exactly one of: 'Dream / Reach', 'Target / Match', 'Safe'>",
+      "admissionChance": <number between 30 and 95 representing admission probability percentage>,
+      "fitReason": "<Concise 2-3 sentences explaining specifically WHY this university and program is a good fit based on the student's actual GPA/scores, budget, degree interest, work background, or skills>",
+      "keyHighlights": [
+        "<Key feature 1, e.g. Strong alumni network in tech>",
+        "<Key feature 2, e.g. Excellent ROI within budget tier>"
+      ]
+    }
+  ],
   "careerOutlook": {
-    "avgSalary": "<salary range, e.g. ₹15-20 LPA>",
-    "topRecruiters": ["<company1>", "<company2>", "<company3>"],
-    "placementRate": "<percentage, e.g. 96%>"
+    "avgSalary": "<Estimated salary range or career potential, e.g. $85,000 - $110,000 or ₹14-20 LPA depending on country>",
+    "topRoles": ["<Role 1>", "<Role 2>", "<Role 3>"],
+    "industryFit": "<Brief sentence on industry demand for this profile>"
   }
-}`;
+}
+`.trim();
+
+  let report;
+  try {
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }],
+        },
+      ],
+      config: {
+        responseMimeType: 'application/json',
+        systemInstruction: SYSTEM_PROMPT,
+      },
+    });
+
+    const responseText = result.text?.trim();
+    if (!responseText) {
+      throw new Error('Vertex AI returned an empty recommendations response.');
+    }
 
     try {
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.6,
-        response_format: { type: 'json_object' }
-      });
-      report = JSON.parse(response.choices[0].message.content);
-    } catch (e) {
-      console.error('OpenAI Report Generation Error:', e);
-      throw e;
+      report = JSON.parse(responseText);
+    } catch (parseErr) {
+      const cleanJSON = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      report = JSON.parse(cleanJSON);
     }
-  } else {
-    // Mock Report
+  } catch (error) {
+    console.error('Error generating university recommendations with Vertex AI:', error);
+    const score = submissionData.graduationScore || 75;
     report = {
-      overallScore: probability,
-      summary: `Based on your graduation score of ${score}%, entrance exam score of ${submissionData.testScore || 'N/A'}, and budget of ${budgetLabels[submissionData.budget] || 'N/A'}, you have excellent admission opportunities in high-ranking colleges matching your budget and city preferences.`,
+      overallScore: Math.min(95, Math.max(50, Math.round(score))),
+      profileSummary: `Admissions profile for ${submissionData.targetDegree || 'Degree'} in ${submissionData.targetCountry || 'target country'}.`,
       strengths: [
-        score >= 80 ? "Superior academic performance in undergraduate graduation score" : "Competitive undergraduate academic standing",
-        submissionData.workExperience && submissionData.workExperience !== '0' ? "Professional work history adds strength to your application" : "Fresh perspective with recent academic focus",
-        submissionData.testScore ? "Standardized test scores meet entry requirements for Tier-1/2 institutions" : "Strong undergraduate foundation holds promise"
+        submissionData.graduationScore ? `Academic undergraduate score of ${submissionData.graduationScore}%` : 'Academic foundation recorded',
+        submissionData.testScore ? `Submitted standardized test score: ${submissionData.testScore}` : 'Candidate evaluation profile submitted',
       ],
       improvements: [
-        "Complete professional certification courses in fields of interest to stand out",
-        "Acquire verified recommendation letters reflecting leadership qualities",
-        "Ensure Statement of Purpose clearly details your career goals and research interests"
+        'Tailor application statements and recommendation letters to specific department research interests',
       ],
-      recommendedColleges: [
-        { name: "IIM Bangalore", chance: Math.min(95, probability + 2), tier: "Tier 1" },
-        { name: "XLRI Jamshedpur", chance: Math.min(92, probability + 5), tier: "Tier 1" },
-        { name: "MDI Gurgaon", chance: Math.min(94, probability + 10), tier: "Tier 2" },
-        { name: "SIBM Pune", chance: Math.min(95, probability + 12), tier: "Tier 2" }
-      ],
-      nextSteps: [
-        "Begin preparing application essays highlighting your unique background",
-        "Connect with alumni of target institutions via LinkedIn",
-        "Look into scholarship criteria corresponding to your academic accomplishments",
-        ""
+      recommendedUniversities: [
+        {
+          name: submissionData.preferredUniversities || 'Target University',
+          country: submissionData.targetCountry || 'Target Region',
+          city: submissionData.preferredCities || 'Preferred City',
+          program: submissionData.targetDegree || 'Program of Choice',
+          category: 'Target / Match',
+          admissionChance: Math.min(90, Math.max(50, Math.round(score))),
+          fitReason: `Directly aligns with your intended degree (${submissionData.targetDegree || 'Program'}) and location preferences.`,
+          keyHighlights: ['Strong academic curriculum in chosen discipline'],
+        },
       ],
       careerOutlook: {
-        avgSalary: submissionData.budget === "above30" || submissionData.budget === "20to30" ? "₹18-24 LPA" : "₹12-16 LPA",
-        topRecruiters: ["McKinsey", "Deloitte", "Amazon", "Infosys", "HDFC Bank"],
-        placementRate: `${Math.min(99, probability + 8)}%`
-      }
+        avgSalary: 'Competitive industry benchmark',
+        topRoles: ['Domain Associate', 'Specialist'],
+        industryFit: 'Positive industry growth prospects',
+      },
     };
+  }
+
+  // Also maintain backwards compatibility with recommendedColleges if anything expects it
+  if (report.recommendedUniversities && !report.recommendedColleges) {
+    report.recommendedColleges = report.recommendedUniversities.map((u) => ({
+      name: u.name,
+      chance: u.admissionChance,
+      tier: u.category,
+      fitReason: u.fitReason,
+    }));
   }
 
   // Update Firestore
   await submissionRef.update({
     report,
     status: 'completed',
-    reportGeneratedAt: admin.firestore.FieldValue.serverTimestamp()
+    reportGeneratedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  console.log(`Report successfully written to submission document.`);
+  console.log('Report and university recommendations successfully written to submission document.');
   return report;
 }
 
@@ -767,6 +829,61 @@ exports.generateReport = functions.https.onCall(async (data, context) => {
     console.error('On-call generateReport error:', error);
     throw new functions.https.HttpsError('internal', error.message || 'Failed to generate report.');
   } 
+});
+
+/**
+ * HTTPS Request Function: Generates/regenerates the AI Admission Report via direct HTTP POST.
+ * Allows client-side GitHub Pages dashboard to trigger recommendations with CORS.
+ */
+exports.generateReportHttp = functions.https.onRequest(async (req, res) => {
+  return cors(req, res, async () => {
+    if (req.method !== 'POST') {
+      return res.status(405).json({
+        error: 'Method not allowed',
+      });
+    }
+
+    try {
+      const { submissionId } = req.body || {};
+
+      if (!submissionId) {
+        return res.status(400).json({
+          error: 'submissionId is required',
+        });
+      }
+
+      const docRef = db.collection('admission_submissions').doc(submissionId);
+      const docSnap = await docRef.get();
+
+      if (!docSnap.exists) {
+        return res.status(404).json({
+          error: 'Submission not found.',
+        });
+      }
+
+      const submissionData = docSnap.data();
+      let resumeData = submissionData.resume ? submissionData.resume.parsedData : null;
+
+      if (!resumeData && submissionData.resumeId) {
+        const parsedSnap = await db.collection('parsed_resumes').doc(submissionData.resumeId).get();
+        if (parsedSnap.exists) {
+          resumeData = parsedSnap.data();
+        }
+      }
+
+      const report = await generateFeasibilityReport(docRef, submissionData, resumeData);
+
+      return res.status(200).json({
+        success: true,
+        report,
+      });
+    } catch (error) {
+      console.error('generateReportHttp error:', error);
+      return res.status(500).json({
+        error: error.message || 'Failed to generate university recommendations.',
+      });
+    }
+  });
 });
 
 exports.admisunChat = functions.https.onRequest(

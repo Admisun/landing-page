@@ -11,7 +11,8 @@ import styles from './dashboard.module.css';
 import { 
   FileText, Calendar, Clock, BarChart3, 
   ArrowRight, FileSpreadsheet, PlusCircle, User,
-  Briefcase, GraduationCap, MapPin, DollarSign, CheckCircle2, AlertTriangle, Loader2
+  Briefcase, GraduationCap, MapPin, DollarSign, CheckCircle2, AlertTriangle, Loader2,
+  Sparkles, RefreshCw, Lightbulb, TrendingUp, Building2, Award
 } from 'lucide-react';
 
 function DashboardContent() {
@@ -28,6 +29,10 @@ function DashboardContent() {
   const [parsedResume, setParsedResume] = useState(null);
   const [loadingResume, setLoadingResume] = useState(false);
   const [resumeError, setResumeError] = useState('');
+
+  // AI Recommendation Generation state
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [generateError, setGenerateError] = useState('');
 
   const [stats, setStats] = useState({
     total: 0,
@@ -59,7 +64,7 @@ function DashboardContent() {
             ...data
           });
 
-          if (data.status === 'completed') {
+          if (data.status === 'completed' || data.report) {
             completedCount++;
           }
           if (data.hasResume || data.resumeId) {
@@ -94,6 +99,7 @@ function DashboardContent() {
   // Handle selecting a submission
   const handleSelectSubmission = (sub) => {
     setSelectedSubmission(sub);
+    setGenerateError('');
     router.push(`/dashboard?id=${sub.id}`);
   };
 
@@ -129,6 +135,66 @@ function DashboardContent() {
     fetchResume();
   }, [selectedSubmission]);
 
+  // Generate / Regenerate Recommendations using Vertex AI
+  const handleGenerateRecommendations = async () => {
+    if (!selectedSubmission) return;
+    setGeneratingReport(true);
+    setGenerateError('');
+
+    try {
+      let reportData = null;
+
+      // 1. Try local API route
+      try {
+        const localRes = await fetch('/api/ai/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ submissionId: selectedSubmission.id })
+        });
+        if (localRes.ok) {
+          const resJson = await localRes.json();
+          reportData = resJson.data?.report || resJson.report;
+        }
+      } catch (localErr) {
+        console.warn('Local /api/ai/report endpoint call skipped or failed, trying Cloud Function...', localErr);
+      }
+
+      // 2. Try Firebase Cloud Function HTTP endpoint
+      if (!reportData) {
+        const cloudRes = await fetch('https://us-central1-admisun.cloudfunctions.net/generateReportHttp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ submissionId: selectedSubmission.id })
+        });
+
+        if (cloudRes.ok) {
+          const resJson = await cloudRes.json();
+          reportData = resJson.report;
+        } else {
+          const errJson = await cloudRes.json().catch(() => ({}));
+          throw new Error(errJson.error || 'Failed to generate recommendations with Vertex AI.');
+        }
+      }
+
+      if (reportData) {
+        setSelectedSubmission(prev => ({
+          ...prev,
+          report: reportData,
+          status: 'completed'
+        }));
+        setSubmissions(prev => prev.map(s => s.id === selectedSubmission.id ? { ...s, report: reportData, status: 'completed' } : s));
+      }
+    } catch (err) {
+      console.error('Error generating university recommendations:', err);
+      setGenerateError(err.message || 'Unable to generate university recommendations. Please try again.');
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  const currentReport = selectedSubmission?.report;
+  const universitiesList = currentReport?.recommendedUniversities || currentReport?.recommendedColleges || [];
+
   return (
     <ProtectedRoute>
       <div className={styles.dashboardContainer}>
@@ -138,7 +204,7 @@ function DashboardContent() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
                 <h1 className={styles.greeting}>Welcome, {user?.displayName || user?.email}</h1>
-                <p className={styles.greetingSub}>Track and review your submitted admission evaluations and parsed document data.</p>
+                <p className={styles.greetingSub}>Track and review your submitted admission evaluations, AI university recommendations, and parsed document data.</p>
               </div>
               <Link href="/#admission-calculator" className="btn btn-primary" style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
                 <PlusCircle size={18} />
@@ -165,7 +231,7 @@ function DashboardContent() {
               </div>
               <div>
                 <div className={styles.statValue}>{stats.completed}</div>
-                <div className={styles.statLabel}>Processed</div>
+                <div className={styles.statLabel}>Recommendations Ready</div>
               </div>
             </div>
 
@@ -175,7 +241,7 @@ function DashboardContent() {
               </div>
               <div>
                 <div className={styles.statValue}>{stats.withResume}</div>
-                <div className={styles.statLabel}>Resumes Uploaded</div>
+                <div className={styles.statLabel}>Resumes Analyzed</div>
               </div>
             </div>
           </div>
@@ -225,8 +291,8 @@ function DashboardContent() {
                           {sub.targetCountry && (
                             <span className={styles.sidebarMetaTag}>{sub.targetCountry}</span>
                           )}
-                          <span className={`${styles.statusBadge} ${sub.status === 'completed' ? styles.statusBadgeCompleted : sub.status === 'failed' ? styles.statusBadgeFailed : styles.statusBadgePending}`}>
-                            {sub.status || 'pending'}
+                          <span className={`${styles.statusBadge} ${sub.report || sub.status === 'completed' ? styles.statusBadgeCompleted : sub.status === 'failed' ? styles.statusBadgeFailed : styles.statusBadgePending}`}>
+                            {sub.report ? 'ready' : (sub.status || 'pending')}
                           </span>
                         </div>
                       </div>
@@ -242,7 +308,7 @@ function DashboardContent() {
                     <div className={styles.detailCardHeader}>
                       <div>
                         <h2 className={styles.detailTitle}>
-                          {selectedSubmission.targetDegree ? `${selectedSubmission.targetDegree} Submission Details` : 'Evaluation Details'}
+                          {selectedSubmission.targetDegree ? `${selectedSubmission.targetDegree} Evaluation Details` : 'Evaluation Details'}
                         </h2>
                         <p className={styles.detailSubtitle}>
                           Submitted on {selectedSubmission.createdAt ? new Date(selectedSubmission.createdAt.seconds * 1000).toLocaleString('en-IN', {
@@ -251,8 +317,8 @@ function DashboardContent() {
                           }) : 'Just now'}
                         </p>
                       </div>
-                      <span className={`${styles.statusBadgeLarge} ${selectedSubmission.status === 'completed' ? styles.statusBadgeCompleted : selectedSubmission.status === 'failed' ? styles.statusBadgeFailed : styles.statusBadgePending}`}>
-                        Status: {selectedSubmission.status || 'pending'}
+                      <span className={`${styles.statusBadgeLarge} ${selectedSubmission.report || selectedSubmission.status === 'completed' ? styles.statusBadgeCompleted : selectedSubmission.status === 'failed' ? styles.statusBadgeFailed : styles.statusBadgePending}`}>
+                        Status: {selectedSubmission.report ? 'completed' : (selectedSubmission.status || 'pending')}
                       </span>
                     </div>
 
@@ -327,6 +393,225 @@ function DashboardContent() {
                       )}
                     </div>
 
+                    {/* AI University Recommendations & Profile Feasibility Section */}
+                    <div className={styles.recommendationsSection}>
+                      <div className={styles.sectionHeaderRow}>
+                        <div>
+                          <div className={styles.aiBadge}>
+                            <Sparkles size={14} /> Vertex AI Powered
+                          </div>
+                          <h3 className={styles.sectionHeaderTitle} style={{ marginTop: '0.4rem' }}>
+                            Recommended Universities & Fit Analysis
+                          </h3>
+                        </div>
+
+                        {currentReport && (
+                          <button 
+                            type="button" 
+                            disabled={generatingReport}
+                            onClick={handleGenerateRecommendations}
+                            className="btn btn-secondary"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.5rem 0.9rem' }}
+                          >
+                            {generatingReport ? (
+                              <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                            ) : (
+                              <RefreshCw size={14} />
+                            )}
+                            {generatingReport ? 'Analyzing...' : 'Refresh Recommendations'}
+                          </button>
+                        )}
+                      </div>
+
+                      {generateError && (
+                        <div className={styles.infoAlertFailed}>
+                          <AlertTriangle size={16} />
+                          <span>{generateError}</span>
+                        </div>
+                      )}
+
+                      {!currentReport ? (
+                        <div className={styles.generatePromptCard}>
+                          <Sparkles size={36} style={{ color: 'var(--primary)' }} />
+                          <h4 className={styles.generatePromptTitle}>Get Tailored University Recommendations</h4>
+                          <p className={styles.generatePromptSub}>
+                            Our Vertex AI engine will evaluate your target degree, scores, budget tier, location preferences, and parsed resume to recommend matching universities with personalized fit explanations.
+                          </p>
+                          <button
+                            type="button"
+                            disabled={generatingReport}
+                            onClick={handleGenerateRecommendations}
+                            className="btn btn-primary"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', fontWeight: '700' }}
+                          >
+                            {generatingReport ? (
+                              <>
+                                <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                                Analyzing Profile with Vertex AI...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={18} />
+                                Generate AI University Recommendations
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                          {/* Overview & Score Card */}
+                          <div className={styles.overviewCard}>
+                            <div className={styles.overviewTop}>
+                              <div className={styles.scoreWrapper}>
+                                <div className={styles.scoreNumber}>{currentReport.overallScore || 85}%</div>
+                                <div className={styles.scoreLabel}>
+                                  <span className={styles.scoreTitle}>Admission Readiness Score</span>
+                                  <span className={styles.scoreSubtitle}>Based on your academic profile and credentials</span>
+                                </div>
+                              </div>
+                            </div>
+                            {currentReport.profileSummary && (
+                              <p className={styles.profileSummaryText}>
+                                {currentReport.profileSummary}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Strengths & Improvements */}
+                          {((currentReport.strengths && currentReport.strengths.length > 0) || (currentReport.improvements && currentReport.improvements.length > 0)) && (
+                            <div className={styles.strengthsImprovementsGrid}>
+                              {currentReport.strengths && currentReport.strengths.length > 0 && (
+                                <div className={styles.insightCard}>
+                                  <div className={`${styles.insightCardHeader} ${styles.strengthsHeader}`}>
+                                    <CheckCircle2 size={18} /> Key Profile Strengths
+                                  </div>
+                                  <ul className={styles.insightList}>
+                                    {currentReport.strengths.map((str, idx) => (
+                                      <li key={idx} className={styles.insightItem}>
+                                        <CheckCircle2 size={14} className={styles.checkIcon} />
+                                        <span>{str}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {currentReport.improvements && currentReport.improvements.length > 0 && (
+                                <div className={styles.insightCard}>
+                                  <div className={`${styles.insightCardHeader} ${styles.improvementsHeader}`}>
+                                    <Lightbulb size={18} /> Actionable Profile Recommendations
+                                  </div>
+                                  <ul className={styles.insightList}>
+                                    {currentReport.improvements.map((imp, idx) => (
+                                      <li key={idx} className={styles.insightItem}>
+                                        <Lightbulb size={14} className={styles.bulbIcon} />
+                                        <span>{imp}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Recommended Universities Grid */}
+                          <div>
+                            <h4 style={{ fontSize: '1.05rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--foreground)' }}>
+                              Recommended Universities for {selectedSubmission.targetDegree || 'Your Profile'} ({universitiesList.length})
+                            </h4>
+
+                            <div className={styles.universitiesGrid}>
+                              {universitiesList.map((uni, idx) => {
+                                const categoryClass = 
+                                  uni.category?.toLowerCase().includes('reach') || uni.tier?.toLowerCase().includes('tier 1') ? styles.categoryReach :
+                                  uni.category?.toLowerCase().includes('safe') || uni.tier?.toLowerCase().includes('tier 3') ? styles.categorySafe :
+                                  styles.categoryMatch;
+
+                                const chance = uni.admissionChance || uni.chance || 75;
+
+                                return (
+                                  <div key={idx} className={styles.universityCard}>
+                                    <div className={styles.universityCardHeader}>
+                                      <div>
+                                        <h5 className={styles.universityName}>{uni.name}</h5>
+                                        <div className={styles.universityLocation}>
+                                          <MapPin size={13} />
+                                          <span>{uni.city ? `${uni.city}, ` : ''}{uni.country || selectedSubmission.targetCountry || 'Global'}</span>
+                                        </div>
+                                      </div>
+                                      <span className={`${styles.categoryBadge} ${categoryClass}`}>
+                                        {uni.category || uni.tier || 'Target / Match'}
+                                      </span>
+                                    </div>
+
+                                    <div className={styles.programMeta}>
+                                      <span className={styles.programName}>
+                                        {uni.program || `${selectedSubmission.targetDegree || 'Degree'} Program`}
+                                      </span>
+                                      <span className={styles.chanceBadge}>
+                                        {chance}% Chance
+                                      </span>
+                                    </div>
+
+                                    {/* Why it is a good fit section */}
+                                    <div className={styles.fitReasonBox}>
+                                      <div className={styles.fitReasonLabel}>
+                                        <Sparkles size={12} /> Why It&apos;s A Good Fit
+                                      </div>
+                                      <p className={styles.fitReasonText}>
+                                        {uni.fitReason || `Matches your ${selectedSubmission.targetDegree || 'degree'} focus and location preference with favorable admission feasibility.`}
+                                      </p>
+                                    </div>
+
+                                    {/* Key Highlights */}
+                                    {uni.keyHighlights && uni.keyHighlights.length > 0 && (
+                                      <div className={styles.highlightsRow}>
+                                        {uni.keyHighlights.map((hl, hIdx) => (
+                                          <span key={hIdx} className={styles.highlightTag}>
+                                            {hl}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Career Outlook */}
+                          {currentReport.careerOutlook && (
+                            <div className={styles.careerOutlookCard}>
+                              <div className={styles.careerOutlookHeader}>
+                                <TrendingUp size={18} style={{ color: 'var(--primary)' }} />
+                                <span>Career Outlook &amp; Potential Outcomes</span>
+                              </div>
+                              <div className={styles.careerOutlookGrid}>
+                                {currentReport.careerOutlook.avgSalary && (
+                                  <div>
+                                    <span style={{ fontWeight: '700', color: 'var(--text-muted)' }}>Estimated Salary:</span>{' '}
+                                    <strong>{currentReport.careerOutlook.avgSalary}</strong>
+                                  </div>
+                                )}
+                                {currentReport.careerOutlook.industryFit && (
+                                  <div>
+                                    <span style={{ fontWeight: '700', color: 'var(--text-muted)' }}>Industry Demand:</span>{' '}
+                                    <span>{currentReport.careerOutlook.industryFit}</span>
+                                  </div>
+                                )}
+                                {currentReport.careerOutlook.topRoles && currentReport.careerOutlook.topRoles.length > 0 && (
+                                  <div style={{ gridColumn: '1 / -1' }}>
+                                    <span style={{ fontWeight: '700', color: 'var(--text-muted)' }}>Relevant Roles:</span>{' '}
+                                    <span>{currentReport.careerOutlook.topRoles.join(', ')}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Resume Information Section */}
                     <div className={styles.resumeInfoWrapper}>
                       <h3 className={styles.sectionHeaderTitle}>Parsed Resume Details</h3>
@@ -360,46 +645,46 @@ function DashboardContent() {
                         <p style={{ color: 'var(--accent)', fontSize: '0.875rem' }}>{resumeError}</p>
                       )}
 
-           {!loadingResume && parsedResume && (
-  <div className={styles.resumeDetails}>
-    {/* Personal Info */}
-    {parsedResume.personalInfo && (
-      <div className={styles.resumeBlock}>
-        <h4 className={styles.blockTitle}>
-          <User size={14} /> Personal Information
-        </h4>
+                      {!loadingResume && parsedResume && (
+                        <div className={styles.resumeDetails}>
+                          {/* Personal Info */}
+                          {parsedResume.personalInfo && (
+                            <div className={styles.resumeBlock}>
+                              <h4 className={styles.blockTitle}>
+                                <User size={14} /> Personal Information
+                              </h4>
 
-        <div className={styles.blockGrid}>
-          {parsedResume.personalInfo.fullName && (
-            <div>
-              <span className={styles.blockLabel}>Name:</span>{" "}
-              {parsedResume.personalInfo.fullName}
-            </div>
-          )}
+                              <div className={styles.blockGrid}>
+                                {(parsedResume.personalInfo.fullName || parsedResume.personalInfo.name) && (
+                                  <div>
+                                    <span className={styles.blockLabel}>Name:</span>{" "}
+                                    {parsedResume.personalInfo.fullName || parsedResume.personalInfo.name}
+                                  </div>
+                                )}
 
-          {parsedResume.personalInfo.email && (
-            <div>
-              <span className={styles.blockLabel}>Email:</span>{" "}
-              {parsedResume.personalInfo.email}
-            </div>
-          )}
+                                {parsedResume.personalInfo.email && (
+                                  <div>
+                                    <span className={styles.blockLabel}>Email:</span>{" "}
+                                    {parsedResume.personalInfo.email}
+                                  </div>
+                                )}
 
-          {parsedResume.personalInfo.phoneNumber && (
-            <div>
-              <span className={styles.blockLabel}>Phone:</span>{" "}
-              {parsedResume.personalInfo.phoneNumber}
-            </div>
-          )}
+                                {(parsedResume.personalInfo.phoneNumber || parsedResume.personalInfo.phone) && (
+                                  <div>
+                                    <span className={styles.blockLabel}>Phone:</span>{" "}
+                                    {parsedResume.personalInfo.phoneNumber || parsedResume.personalInfo.phone}
+                                  </div>
+                                )}
 
-          {parsedResume.personalInfo.address && (
-            <div>
-              <span className={styles.blockLabel}>Location:</span>{" "}
-              {parsedResume.personalInfo.address}
-            </div>
-          )}
-        </div>
-      </div>
-    )}
+                                {(parsedResume.personalInfo.address || parsedResume.personalInfo.location) && (
+                                  <div>
+                                    <span className={styles.blockLabel}>Location:</span>{" "}
+                                    {parsedResume.personalInfo.address || parsedResume.personalInfo.location}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
 
                           {/* Education */}
                           {parsedResume.education && parsedResume.education.length > 0 && (
@@ -409,12 +694,14 @@ function DashboardContent() {
                                 {parsedResume.education.map((edu, idx) => (
                                   <div key={idx} className={styles.blockItem}>
                                     <div className={styles.blockItemHeader}>
-                                      <strong>{edu.degree || 'Degree'}</strong> {edu.specializationMajor ? `in ${edu.specializationMajor}` : ''}
+                                      <strong>{edu.degree || 'Degree'}</strong> {edu.specializationMajor || edu.major ? `in ${edu.specializationMajor || edu.major}` : ''}
                                     </div>
                                     <div className={styles.blockItemSub}>
-                                      {edu.universityCollege || 'Institution'} {edu.graduationYear ? `(${edu.graduationYear})` : ''}
+                                      {edu.universityCollege || edu.institution || 'Institution'} {edu.graduationYear ? `(${edu.graduationYear})` : ''}
                                     </div>
-                                    {edu.gpa && <div className={styles.blockItemMeta}>GPA / Score: {edu.gpa}</div>}
+                                    {(edu.gpa || edu.percentage || edu.cgpaPercentage) && (
+                                      <div className={styles.blockItemMeta}>GPA / Score: {edu.gpa || edu.percentage || edu.cgpaPercentage}</div>
+                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -422,18 +709,18 @@ function DashboardContent() {
                           )}
 
                           {/* Experience */}
-                          {parsedResume.experience && parsedResume.experience.length > 0 && (
+                          {((parsedResume.experience && parsedResume.experience.length > 0) || (parsedResume.workExperience && parsedResume.workExperience.length > 0)) && (
                             <div className={styles.resumeBlock}>
                               <h4 className={styles.blockTitle}><Briefcase size={14} /> Work Experience</h4>
                               <div className={styles.blockList}>
-                                {parsedResume.experience.map((exp, idx) => (
+                                {(parsedResume.experience || parsedResume.workExperience).map((exp, idx) => (
                                   <div key={idx} className={styles.blockItem}>
                                     <div className={styles.blockItemHeader}>
-                                      <strong>{exp.role || 'Role'}</strong> {exp.company ? `at ${exp.company}` : ''}
+                                      <strong>{exp.role || exp.jobTitle || 'Role'}</strong> {exp.company ? `at ${exp.company}` : ''}
                                     </div>
                                     {exp.startDate && (
                                       <div className={styles.blockItemSub}>
-                                        {exp.startDate} - {exp.endDate || 'Present'}
+                                        {exp.startDate} - {exp.endDate || 'Present'} {exp.totalExperience ? `(${exp.totalExperience})` : ''}
                                       </div>
                                     )}
                                     {exp.description && <p className={styles.blockItemDescription}>{exp.description}</p>}
@@ -444,13 +731,18 @@ function DashboardContent() {
                           )}
 
                           {/* Skills */}
-                          {parsedResume.skills && parsedResume.skills.length > 0 && (
+                          {parsedResume.skills && (Array.isArray(parsedResume.skills) ? parsedResume.skills.length > 0 : Object.keys(parsedResume.skills).length > 0) && (
                             <div className={styles.resumeBlock}>
                               <h4 className={styles.blockTitle}>Skills</h4>
                               <div className={styles.tagsContainer}>
-                                {parsedResume.skills.map((skill, idx) => (
-                                  <span key={idx} className={styles.skillTag}>{skill}</span>
-                                ))}
+                                {Array.isArray(parsedResume.skills)
+                                  ? parsedResume.skills.map((skill, idx) => (
+                                      <span key={idx} className={styles.skillTag}>{skill}</span>
+                                    ))
+                                  : Object.values(parsedResume.skills).flat().map((skill, idx) => (
+                                      <span key={idx} className={styles.skillTag}>{skill}</span>
+                                    ))
+                                }
                               </div>
                             </div>
                           )}
@@ -462,8 +754,10 @@ function DashboardContent() {
                               <div className={styles.blockList}>
                                 {parsedResume.projects.map((proj, idx) => (
                                   <div key={idx} className={styles.blockItem}>
-                                    <strong>{proj.name}</strong>
-                                    {proj.description && <p className={styles.blockItemDescription}>{proj.description}</p>}
+                                    <strong>{proj.name || proj.projectName}</strong>
+                                    {(proj.description || proj.outcomeImpact) && (
+                                      <p className={styles.blockItemDescription}>{proj.description || proj.outcomeImpact}</p>
+                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -476,20 +770,27 @@ function DashboardContent() {
                               <h4 className={styles.blockTitle}>Certifications</h4>
                               <ul className={styles.bulletList}>
                                 {parsedResume.certifications.map((cert, idx) => (
-                                  <li key={idx}>{cert}</li>
+                                  <li key={idx}>
+                                    {typeof cert === 'string' ? cert : `${cert.certificationName || 'Certification'}${cert.issuingOrganization ? ` - ${cert.issuingOrganization}` : ''}`}
+                                  </li>
                                 ))}
                               </ul>
                             </div>
                           )}
 
                           {/* Achievements */}
-                          {parsedResume.achievements && parsedResume.achievements.length > 0 && (
+                          {parsedResume.achievements && (Array.isArray(parsedResume.achievements) ? parsedResume.achievements.length > 0 : Object.keys(parsedResume.achievements).length > 0) && (
                             <div className={styles.resumeBlock}>
                               <h4 className={styles.blockTitle}>Achievements</h4>
                               <ul className={styles.bulletList}>
-                                {parsedResume.achievements.map((ach, idx) => (
-                                  <li key={idx}>{ach}</li>
-                                ))}
+                                {Array.isArray(parsedResume.achievements)
+                                  ? parsedResume.achievements.map((ach, idx) => (
+                                      <li key={idx}>{ach}</li>
+                                    ))
+                                  : Object.values(parsedResume.achievements).flat().map((ach, idx) => (
+                                      <li key={idx}>{ach}</li>
+                                    ))
+                                }
                               </ul>
                             </div>
                           )}
