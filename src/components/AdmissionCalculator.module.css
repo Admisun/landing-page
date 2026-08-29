@@ -75,6 +75,7 @@
   color: var(--foreground);
 }
 .input {
+.input {
   padding: 0.875rem 1rem;
   border-radius: 0.5rem;
   border: 1px solid var(--border);
@@ -83,6 +84,16 @@
   font-size: 1rem;
   transition: all 0.2s ease;
   font-family: inherit;
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Ensure grid items can shrink */
+.formGroup {
+  min-width: 0;
+}
 }
 .input:focus {
   outline: none;

@@ -91,10 +91,24 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    await createUserDocument(result.user);
-    return result;
-  };
+    // Prompt user to select account each time
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+        // Try popup first (works on most browsers)
+        const result = await signInWithPopup(auth, provider);
+        await createUserDocument(result.user);
+        return result;
+    } catch (err) {
+        // If popup is blocked (common on mobile), fall back to redirect flow
+        if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+            await signInWithRedirect(auth, provider);
+            // The redirect will return result after navigation; caller can handle via onAuthStateChanged.
+            return null;
+        }
+        console.error('Google sign-in error:', err);
+        throw err;
+    }
+};
 
   const logout = () => {
     return signOut(auth);
