@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase/config';
 import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
-import ProtectedRoute from '@/components/ProtectedRoute';
 import styles from './dashboard.module.css';
 import { 
   FileText, Calendar, Clock, BarChart3, 
@@ -30,70 +29,93 @@ function DashboardContent() {
   const [loadingResume, setLoadingResume] = useState(false);
   const [resumeError, setResumeError] = useState('');
 
-  // AI Recommendation Generation state
+  // Recommendation Generation state
   const [generatingReport, setGeneratingReport] = useState(false);
   const [generateError, setGenerateError] = useState('');
 
-  const [stats, setStats] = useState({
-    total: 0,
-    completed: 0,
-    withResume: 0
-  });
-
   // Fetch submissions
   useEffect(() => {
-    const fetchSubmissions = async () => {
-      if (!user) return;
-      
-      try {
-        const q = query(
-          collection(db, "admission_submissions"),
-          where("uid", "==", user.uid),
-          orderBy("createdAt", "desc")
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const docs = [];
-        let completedCount = 0;
-        let resumeCount = 0;
+    let isMounted = true;
 
-        querySnapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          docs.push({
-            id: docSnap.id,
-            ...data
+    const fetchSubmissions = async () => {
+      setLoading(true);
+
+      if (user) {
+        try {
+          const q = query(
+            collection(db, "admission_submissions"),
+            where("uid", "==", user.uid),
+            orderBy("createdAt", "desc")
+          );
+          
+          const querySnapshot = await getDocs(q);
+          const docs = [];
+
+          querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            docs.push({
+              id: docSnap.id,
+              ...data
+            });
           });
 
-          if (data.status === 'completed' || data.report) {
-            completedCount++;
-          }
-          if (data.hasResume || data.resumeId) {
-            resumeCount++;
-          }
-        });
+          if (!isMounted) return;
 
-        setSubmissions(docs);
-        setStats({
-          total: docs.length,
-          completed: completedCount,
-          withResume: resumeCount
-        });
+          setSubmissions(docs);
 
-        // Set initial selected submission
-        if (docs.length > 0) {
-          const initial = selectedId 
-            ? docs.find(d => d.id === selectedId) || docs[0]
-            : docs[0];
-          setSelectedSubmission(initial);
+          // Set initial selected submission
+          if (docs.length > 0) {
+            const initial = selectedId 
+              ? docs.find(d => d.id === selectedId) || docs[0]
+              : docs[0];
+            setSelectedSubmission(initial);
+          } else {
+            setSelectedSubmission(null);
+          }
+        } catch (err) {
+          console.error("Error fetching submissions:", err);
+        } finally {
+          if (isMounted) setLoading(false);
         }
-      } catch (err) {
-        console.error("Error fetching submissions:", err);
-      } finally {
-        setLoading(false);
+      } else {
+        // Non-signed in / guest user flow
+        if (selectedId) {
+          try {
+            const docRef = doc(db, "admission_submissions", selectedId);
+            const docSnap = await getDoc(docRef);
+
+            if (!isMounted) return;
+
+            if (docSnap.exists()) {
+              const subData = { id: docSnap.id, ...docSnap.data() };
+              setSubmissions([subData]);
+              setSelectedSubmission(subData);
+            } else {
+              setSubmissions([]);
+              setSelectedSubmission(null);
+            }
+          } catch (err) {
+            console.error("Error fetching guest submission:", err);
+            if (isMounted) {
+              setSubmissions([]);
+              setSelectedSubmission(null);
+            }
+          } finally {
+            if (isMounted) setLoading(false);
+          }
+        } else {
+          setSubmissions([]);
+          setSelectedSubmission(null);
+          setLoading(false);
+        }
       }
     };
 
     fetchSubmissions();
+
+    return () => {
+      isMounted = false;
+    };
   }, [user, selectedId]);
 
   // Handle selecting a submission
@@ -135,9 +157,11 @@ function DashboardContent() {
     fetchResume();
   }, [selectedSubmission]);
 
-  // Generate / Regenerate Recommendations using Vertex AI
-  const handleGenerateRecommendations = async () => {
-    if (!selectedSubmission) return;
+  // Generate / Regenerate Recommendations
+  const handleGenerateRecommendations = useCallback(async (targetSubmission) => {
+    const target = targetSubmission || selectedSubmission;
+    if (!target || !target.id) return;
+
     setGeneratingReport(true);
     setGenerateError('');
 
@@ -149,7 +173,7 @@ function DashboardContent() {
         const localRes = await fetch('/api/ai/report', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ submissionId: selectedSubmission.id })
+          body: JSON.stringify({ submissionId: target.id })
         });
         if (localRes.ok) {
           const resJson = await localRes.json();
@@ -164,7 +188,7 @@ function DashboardContent() {
         const cloudRes = await fetch('https://us-central1-admisun.cloudfunctions.net/generateReportHttp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ submissionId: selectedSubmission.id })
+          body: JSON.stringify({ submissionId: target.id })
         });
 
         if (cloudRes.ok) {
@@ -172,17 +196,17 @@ function DashboardContent() {
           reportData = resJson.report;
         } else {
           const errJson = await cloudRes.json().catch(() => ({}));
-          throw new Error(errJson.error || 'Failed to generate recommendations with Vertex AI.');
+          throw new Error(errJson.error || 'Failed to generate university recommendations.');
         }
       }
 
       if (reportData) {
-        setSelectedSubmission(prev => ({
+        setSelectedSubmission(prev => prev && prev.id === target.id ? {
           ...prev,
           report: reportData,
           status: 'completed'
-        }));
-        setSubmissions(prev => prev.map(s => s.id === selectedSubmission.id ? { ...s, report: reportData, status: 'completed' } : s));
+        } : prev);
+        setSubmissions(prev => prev.map(s => s.id === target.id ? { ...s, report: reportData, status: 'completed' } : s));
       }
     } catch (err) {
       console.error('Error generating university recommendations:', err);
@@ -190,67 +214,40 @@ function DashboardContent() {
     } finally {
       setGeneratingReport(false);
     }
-  };
+  }, [selectedSubmission]);
+
+  // Automatically trigger recommendation generation if not yet generated
+  useEffect(() => {
+    if (selectedSubmission && !selectedSubmission.report && !generatingReport && !generateError) {
+      handleGenerateRecommendations(selectedSubmission);
+    }
+  }, [selectedSubmission?.id, selectedSubmission?.report, generatingReport, generateError, handleGenerateRecommendations]);
 
   const currentReport = selectedSubmission?.report;
   const universitiesList = currentReport?.recommendedUniversities || currentReport?.recommendedColleges || [];
 
   return (
-    <ProtectedRoute>
-      <div className={styles.dashboardContainer}>
-        <div className="container">
-          {/* Header */}
-          <div className={styles.dashboardHeader}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-              <div>
-                <h1 className={styles.greeting}>Welcome, {user?.displayName || user?.email}</h1>
-                <p className={styles.greetingSub}>Track and review your submitted admission evaluations, AI university recommendations, and parsed document data.</p>
-              </div>
-              <Link href="/#admission-calculator" className="btn btn-primary" style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
-                <PlusCircle size={18} />
-                Submit Another Application
-              </Link>
+    <div className={styles.dashboardContainer}>
+      <div className="container">
+        {/* Header */}
+        <div className={styles.dashboardHeader}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h1 className={styles.greeting}>Welcome, {user?.displayName || user?.email || 'Applicant'}</h1>
+              <p className={styles.greetingSub}>Track and review your submitted admission evaluations, recommendations, and parsed document data.</p>
             </div>
+            <Link href="/#admission-calculator" className="btn btn-primary" style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+              <PlusCircle size={18} />
+              Submit Another Application
+            </Link>
           </div>
+        </div>
 
-          {/* Stats Grid */}
-          <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <div className={`${styles.statIconWrapper} ${styles.statIconBlue}`}>
-                <FileText size={24} />
-              </div>
-              <div>
-                <div className={styles.statValue}>{stats.total}</div>
-                <div className={styles.statLabel}>Total Evaluations</div>
-              </div>
-            </div>
-
-            <div className={styles.statCard}>
-              <div className={`${styles.statIconWrapper} ${styles.statIconGreen}`}>
-                <CheckCircle2 size={24} />
-              </div>
-              <div>
-                <div className={styles.statValue}>{stats.completed}</div>
-                <div className={styles.statLabel}>Recommendations Ready</div>
-              </div>
-            </div>
-
-            <div className={styles.statCard}>
-              <div className={`${styles.statIconWrapper} ${styles.statIconPurple}`}>
-                <FileSpreadsheet size={24} />
-              </div>
-              <div>
-                <div className={styles.statValue}>{stats.withResume}</div>
-                <div className={styles.statLabel}>Resumes Analyzed</div>
-              </div>
-            </div>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
+            <Loader2 size={32} style={{ animation: 'spin 1.5s linear infinite', margin: '0 auto 1rem', color: 'var(--primary)' }} />
+            <p>Loading reports...</p>
           </div>
-
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '3rem' }}>
-              <Loader2 size={32} style={{ animation: 'spin 1.5s linear infinite', margin: '0 auto 1rem', color: 'var(--primary)' }} />
-              <p>Loading reports...</p>
-            </div>
           ) : submissions.length === 0 ? (
             <div className={styles.emptyState}>
               <FileText size={48} className={styles.emptyIcon} />
@@ -393,15 +390,15 @@ function DashboardContent() {
                       )}
                     </div>
 
-                    {/* AI University Recommendations & Profile Feasibility Section */}
+                    {/* University Recommendations & Feasibility Section */}
                     <div className={styles.recommendationsSection}>
                       <div className={styles.sectionHeaderRow}>
                         <div>
                           <div className={styles.aiBadge}>
-                            <Sparkles size={14} /> Vertex AI Powered
+                            <Sparkles size={14} /> Recommended Universities
                           </div>
                           <h3 className={styles.sectionHeaderTitle} style={{ marginTop: '0.4rem' }}>
-                            Recommended Universities & Fit Analysis
+                            University Recommendations & Fit Analysis
                           </h3>
                         </div>
 
@@ -409,7 +406,7 @@ function DashboardContent() {
                           <button 
                             type="button" 
                             disabled={generatingReport}
-                            onClick={handleGenerateRecommendations}
+                            onClick={() => handleGenerateRecommendations(selectedSubmission)}
                             className="btn btn-secondary"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.5rem 0.9rem' }}
                           >
@@ -426,36 +423,30 @@ function DashboardContent() {
                       {generateError && (
                         <div className={styles.infoAlertFailed}>
                           <AlertTriangle size={16} />
-                          <span>{generateError}</span>
+                          <span style={{ flex: 1 }}>{generateError}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGenerateError('');
+                              handleGenerateRecommendations(selectedSubmission);
+                            }}
+                            className="btn btn-primary"
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                          >
+                            Retry
+                          </button>
                         </div>
                       )}
 
                       {!currentReport ? (
                         <div className={styles.generatePromptCard}>
-                          <Sparkles size={36} style={{ color: 'var(--primary)' }} />
-                          <h4 className={styles.generatePromptTitle}>Get Tailored University Recommendations</h4>
+                          <Loader2 size={36} style={{ animation: 'spin 1.5s linear infinite', color: 'var(--primary)' }} />
+                          <h4 className={styles.generatePromptTitle}>
+                            {generatingReport ? 'Generating Recommendations...' : 'Loading Recommendations...'}
+                          </h4>
                           <p className={styles.generatePromptSub}>
-                            Our Vertex AI engine will evaluate your target degree, scores, budget tier, location preferences, and parsed resume to recommend matching universities with personalized fit explanations.
+                            Our recommendation system is evaluating your target degree, scores, budget tier, location preferences, and parsed resume to recommend matching universities with personalized fit explanations.
                           </p>
-                          <button
-                            type="button"
-                            disabled={generatingReport}
-                            onClick={handleGenerateRecommendations}
-                            className="btn btn-primary"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', fontWeight: '700' }}
-                          >
-                            {generatingReport ? (
-                              <>
-                                <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                                Analyzing Profile with Vertex AI...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles size={18} />
-                                Generate AI University Recommendations
-                              </>
-                            )}
-                          </button>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
@@ -804,7 +795,6 @@ function DashboardContent() {
           )}
         </div>
       </div>
-    </ProtectedRoute>
   );
 }
 

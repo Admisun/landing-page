@@ -102,11 +102,7 @@ if (!parseResponse.ok) {
       reset();
       setResumeFile(null);
 
-      if (user) {
-        router.push(`/dashboard?id=${submissionId}`);
-      } else {
-        setStatusMsg('Report submitted! Sign in to view your personalized AI analysis.');
-      }
+      router.push(`/dashboard?id=${submissionId}`);
     } catch (error) {
       console.error("Error adding document: ", error);
       setStatusMsg('There was an error submitting your request. Please try again.');
