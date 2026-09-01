@@ -3,29 +3,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { parseResumeContent } from '@/lib/ai/resumeParser';
 import { generateUniversityRecommendations } from '@/lib/ai/universityRecommender';
-
-/**
- * Downloads a file from Firebase Storage and converts it to base64.
- */
-async function fetchResumeFile(url) {
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to download resume file: ${response.status} ${response.statusText}`
-    );
-  }
-
-  const contentType =
-    response.headers.get('content-type') || 'application/pdf';
-
-  const buffer = await response.arrayBuffer();
-
-  return {
-    base64: Buffer.from(buffer).toString('base64'),
-    contentType,
-  };
-}
+import { fetchRemoteFileAsBase64 } from '@/lib/utils/fetchRemoteFile';
 
 export async function POST(req) {
   let submissionId = null;
@@ -51,7 +29,7 @@ export async function POST(req) {
     }
 
     // Download the resume
-    const { base64, contentType } = await fetchResumeFile(downloadUrl);
+    const { base64, contentType } = await fetchRemoteFileAsBase64(downloadUrl);
 
     // Parse using Vertex AI
     const parsedData = await parseResumeContent(base64, contentType);

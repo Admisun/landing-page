@@ -51,14 +51,38 @@ export async function generateUniversityRecommendations(formData = {}, parsedRes
 - Extracurriculars: ${JSON.stringify(parsedResume.extracurricularActivities || [])}`
     : "\n\nPARSED RESUME: None provided.";
 
+  // Support both the current structured submission shape and the legacy
+  // flat shape (graduationScore/bare testScore/string preferredUniversities)
+  // still present on submissions created before this form redesign.
+  const preferredUniversitiesText = Array.isArray(formData.preferredUniversities)
+    ? (formData.preferredUniversities.join(', ') || "Not specified")
+    : (formData.preferredUniversities || "Not specified");
+
+  const educationText = [
+    formData.undergraduate?.institution || formData.undergraduate?.degree
+      ? `Undergraduate: ${formData.undergraduate.degree || 'Degree not specified'} at ${formData.undergraduate.institution || 'institution not specified'} (score: ${formData.undergraduate.score ?? 'N/A'}, year: ${formData.undergraduate.year ?? 'N/A'})`
+      : (formData.graduationScore != null ? `Undergraduate score: ${formData.graduationScore}%` : null),
+    formData.postgraduate?.institution || formData.postgraduate?.degree
+      ? `Postgraduate: ${formData.postgraduate.degree || 'Degree not specified'} at ${formData.postgraduate.institution || 'institution not specified'} (score: ${formData.postgraduate.score ?? 'N/A'}, year: ${formData.postgraduate.year ?? 'N/A'})`
+      : null,
+  ].filter(Boolean).join('; ') || "Not provided";
+
+  const testInfo = formData.testType
+    ? `${formData.testType}: ${formData.testScore || 'Not provided'}`
+    : (formData.testScore || "Not provided");
+
+  const englishInfo = formData.englishTestType
+    ? `\n- English Proficiency: ${formData.englishTestType}: ${formData.englishTestScore || 'Not provided'}`
+    : '';
+
   const prompt = `
 STUDENT ADMISSION PROFILE:
 - Target Degree: ${formData.targetDegree || "Not specified"}
 - Target Country: ${formData.targetCountry || "Not specified"}
-- Preferred Universities: ${formData.preferredUniversities || "Not specified"}
+- Preferred Universities: ${preferredUniversitiesText}
 - Preferred Cities / Locations: ${formData.preferredCities || "Not specified"}
-- Undergraduate / Academic Score: ${formData.graduationScore ? `${formData.graduationScore}%` : "Not provided"}
-- Standardized Test Score (CAT/GMAT/GRE/SAT): ${formData.testScore || "Not provided"}
+- Education: ${educationText}
+- Standardized Test Score: ${testInfo}${englishInfo}
 - Budget Tier: ${budgetLabels[formData.budget] || formData.budget || "Not specified"}
 - Work Experience Duration: ${experienceLabels[formData.workExperience] || formData.workExperience || "Not specified"}
 ${resumeContext}

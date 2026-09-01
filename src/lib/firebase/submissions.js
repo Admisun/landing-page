@@ -22,17 +22,37 @@ export async function saveAdmissionSubmission(
   user = null,
   hasResume = false
 ) {
+  const undergraduate = {
+    institution: formData.undergraduate?.institution || '',
+    degree: formData.undergraduate?.degree || '',
+    score: formData.undergraduate?.score ? parseFloat(formData.undergraduate.score) : null,
+    year: formData.undergraduate?.year ? parseInt(formData.undergraduate.year, 10) : null,
+  };
+
+  const postgraduate = (formData.postgraduate?.institution || formData.postgraduate?.degree)
+    ? {
+        institution: formData.postgraduate.institution || '',
+        degree: formData.postgraduate.degree || '',
+        score: formData.postgraduate.score ? parseFloat(formData.postgraduate.score) : null,
+        year: formData.postgraduate.year ? parseInt(formData.postgraduate.year, 10) : null,
+      }
+    : null;
+
   const submission = {
+    testType: formData.testType || '',
     testScore: formData.testScore || '',
-    graduationScore: formData.graduationScore
-      ? parseFloat(formData.graduationScore)
-      : null,
+    englishTestType: formData.englishTestType || '',
+    englishTestScore: formData.englishTestScore || '',
+    undergraduate,
+    postgraduate,
     budget: formData.budget || '',
     workExperience: formData.workExperience || '',
     preferredCities: formData.preferredCities || '',
     targetDegree: formData.targetDegree || '',
     targetCountry: formData.targetCountry || '',
-    preferredUniversities: formData.preferredUniversities || '',
+    preferredUniversities: Array.isArray(formData.preferredUniversities)
+      ? formData.preferredUniversities
+      : [],
 
     uid: user ? user.uid : 'anonymous',
     applicantName: user?.displayName || '',

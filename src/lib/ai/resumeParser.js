@@ -29,7 +29,8 @@ export async function parseResumeContent(base64Data, mimeType) {
       "degree": "string or null",
       "major": "string or null",
       "graduationYear": "string or null",
-      "gpa": "string or null"
+      "gpa": "string or null",
+      "level": "one of: Bachelors, Masters, Diploma, PhD, HighSchool, or null"
     }
   ],
   "experience": [
@@ -51,6 +52,7 @@ export async function parseResumeContent(base64Data, mimeType) {
   "certifications": ["string"],
   "achievements": ["string"]
 }
+For each education entry, classify its level using the "level" field, choosing the closest match from: Bachelors, Masters, Diploma, PhD, HighSchool.
 If any information is not present in the resume, use null or omit it. Do not invent any placeholder or mock data. Return only valid JSON.`;
 
   try {

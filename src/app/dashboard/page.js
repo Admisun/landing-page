@@ -118,13 +118,6 @@ function DashboardContent() {
     };
   }, [user, selectedId]);
 
-  // Handle selecting a submission
-  const handleSelectSubmission = (sub) => {
-    setSelectedSubmission(sub);
-    setGenerateError('');
-    router.push(`/dashboard?id=${sub.id}`);
-  };
-
   // Fetch resume details if submission has resumeId
   useEffect(() => {
     const fetchResume = async () => {
@@ -259,46 +252,7 @@ function DashboardContent() {
             </div>
           ) : (
             <div className={styles.dashboardLayout}>
-              {/* Left Column: Submissions List */}
-              <div className={styles.sidebar}>
-                <h3 className={styles.columnTitle}>Your Submissions</h3>
-                <div className={styles.sidebarList}>
-                  {submissions.map((sub) => {
-                    const date = sub.createdAt ? new Date(sub.createdAt.seconds * 1000).toLocaleDateString('en-IN', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    }) : 'Just now';
-
-                    const isSelected = selectedSubmission?.id === sub.id;
-
-                    return (
-                      <div 
-                        key={sub.id} 
-                        className={`${styles.sidebarItem} ${isSelected ? styles.sidebarItemActive : ''}`}
-                        onClick={() => handleSelectSubmission(sub)}
-                      >
-                        <div className={styles.sidebarItemHeader}>
-                          <span className={styles.sidebarItemTitle}>
-                            {sub.targetDegree ? `${sub.targetDegree} Evaluation` : 'Profile Evaluation'}
-                          </span>
-                          <span className={styles.sidebarItemDate}>{date}</span>
-                        </div>
-                        <div className={styles.sidebarItemMeta}>
-                          {sub.targetCountry && (
-                            <span className={styles.sidebarMetaTag}>{sub.targetCountry}</span>
-                          )}
-                          <span className={`${styles.statusBadge} ${sub.report || sub.status === 'completed' ? styles.statusBadgeCompleted : sub.status === 'failed' ? styles.statusBadgeFailed : styles.statusBadgePending}`}>
-                            {sub.report ? 'ready' : (sub.status || 'pending')}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right Column: Detailed View */}
+              {/* Detailed View — most recent submission only */}
               <div className={styles.mainContent}>
                 {selectedSubmission && (
                   <div className={styles.detailCard}>
@@ -314,9 +268,16 @@ function DashboardContent() {
                           }) : 'Just now'}
                         </p>
                       </div>
-                      <span className={`${styles.statusBadgeLarge} ${selectedSubmission.report || selectedSubmission.status === 'completed' ? styles.statusBadgeCompleted : selectedSubmission.status === 'failed' ? styles.statusBadgeFailed : styles.statusBadgePending}`}>
-                        Status: {selectedSubmission.report ? 'completed' : (selectedSubmission.status || 'pending')}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                        <span className={`${styles.statusBadgeLarge} ${selectedSubmission.report || selectedSubmission.status === 'completed' ? styles.statusBadgeCompleted : selectedSubmission.status === 'failed' ? styles.statusBadgeFailed : styles.statusBadgePending}`}>
+                          Status: {selectedSubmission.report ? 'completed' : (selectedSubmission.status || 'pending')}
+                        </span>
+                        {currentReport?.overallScore != null && (
+                          <span className={styles.statusBadgeLarge} style={{ background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)' }}>
+                            Admission Possibility: {currentReport.overallScore}%
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Basic Submission Fields Grid */}
@@ -335,10 +296,14 @@ function DashboardContent() {
                         </div>
                       )}
 
-                      {selectedSubmission.preferredUniversities && (
+                      {selectedSubmission.preferredUniversities && selectedSubmission.preferredUniversities.length > 0 && (
                         <div className={styles.gridField} style={{ gridColumn: '1 / -1' }}>
                           <div className={styles.fieldLabel}>Preferred Universities</div>
-                          <div className={styles.fieldValue}>{selectedSubmission.preferredUniversities}</div>
+                          <div className={styles.fieldValue}>
+                            {Array.isArray(selectedSubmission.preferredUniversities)
+                              ? selectedSubmission.preferredUniversities.join(', ')
+                              : selectedSubmission.preferredUniversities}
+                          </div>
                         </div>
                       )}
 
@@ -349,17 +314,48 @@ function DashboardContent() {
                         </div>
                       )}
 
-                      {selectedSubmission.graduationScore !== undefined && selectedSubmission.graduationScore !== null && (
+                      {selectedSubmission.undergraduate?.institution || selectedSubmission.undergraduate?.degree ? (
+                        <div className={styles.gridField}>
+                          <div className={styles.fieldLabel}>Undergraduate</div>
+                          <div className={styles.fieldValue}>
+                            {[selectedSubmission.undergraduate.degree, selectedSubmission.undergraduate.institution].filter(Boolean).join(' — ')}
+                            {selectedSubmission.undergraduate.score != null && ` (Score: ${selectedSubmission.undergraduate.score})`}
+                            {selectedSubmission.undergraduate.year != null && `, ${selectedSubmission.undergraduate.year}`}
+                          </div>
+                        </div>
+                      ) : (selectedSubmission.graduationScore !== undefined && selectedSubmission.graduationScore !== null && (
                         <div className={styles.gridField}>
                           <div className={styles.fieldLabel}>Academic Percentage (UG)</div>
                           <div className={styles.fieldValue}>{selectedSubmission.graduationScore}%</div>
+                        </div>
+                      ))}
+
+                      {(selectedSubmission.postgraduate?.institution || selectedSubmission.postgraduate?.degree) && (
+                        <div className={styles.gridField}>
+                          <div className={styles.fieldLabel}>Post-Graduate</div>
+                          <div className={styles.fieldValue}>
+                            {[selectedSubmission.postgraduate.degree, selectedSubmission.postgraduate.institution].filter(Boolean).join(' — ')}
+                            {selectedSubmission.postgraduate.score != null && ` (Score: ${selectedSubmission.postgraduate.score})`}
+                            {selectedSubmission.postgraduate.year != null && `, ${selectedSubmission.postgraduate.year}`}
+                          </div>
                         </div>
                       )}
 
                       {selectedSubmission.testScore && (
                         <div className={styles.gridField}>
-                          <div className={styles.fieldLabel}>Test Score (CAT/GMAT/GRE)</div>
+                          <div className={styles.fieldLabel}>
+                            {selectedSubmission.testType ? `Test Score (${selectedSubmission.testType})` : 'Test Score (CAT/GMAT/GRE)'}
+                          </div>
                           <div className={styles.fieldValue}>{selectedSubmission.testScore}</div>
+                        </div>
+                      )}
+
+                      {selectedSubmission.englishTestScore && (
+                        <div className={styles.gridField}>
+                          <div className={styles.fieldLabel}>
+                            {selectedSubmission.englishTestType ? `English Proficiency (${selectedSubmission.englishTestType})` : 'English Proficiency'}
+                          </div>
+                          <div className={styles.fieldValue}>{selectedSubmission.englishTestScore}</div>
                         </div>
                       )}
 
