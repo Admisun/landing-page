@@ -51,7 +51,7 @@ export default function Hero() {
               <div className={styles.analysisBox}>
                 <div className={styles.progressHeader}>
                   <span>Admission Probability</span>
-                  <span className={styles.percentage}>87%</span>
+                  <span className={styles.percentage}>%</span>
                 </div>
                 <div className={styles.progressBar}>
                   <div className={styles.progressFill} style={{ width: '87%' }}></div>

@@ -160,11 +160,18 @@ export default function AdmissionCalculator({ hidePrevious }) {
     }
   }, [user, applyPrefillGuarded]);
 
-  const onSubmit = async (data) => {
-    setIsSubmitting(true);
-    setStatusMsg('');
+      
+const onSubmit = async (data) => {
+  setIsSubmitting(true);
+  setStatusMsg('');
 
+  if (!resumeFile) {
+    setResumeError('Please upload your resume before generating the report.');
+    setIsSubmitting(false);
+    return;
+  }  
     try {
+
       const submissionData = {
         ...data,
         postgraduate: showPostgraduate ? data.postgraduate : null,
@@ -229,12 +236,13 @@ export default function AdmissionCalculator({ hidePrevious }) {
             {/* Resume upload — first, so it can pre-fill the rest of the form */}
             <div className={styles.subsection}>
               <div className={styles.formGroup}>
-                <label>Resume (Optional)</label>
+                <label>Resume *</label>
                 <div className={styles.fileInputWrapper}>
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-                    onChange={(e) => handleResumeFileChange(e.target.files?.[0] || null)}
+                    required
+                   onChange={(e) => handleResumeFileChange(e.target.files?.[0] || null)}
                     className={styles.fileInput}
                     id="resume-upload"
                   />
@@ -266,20 +274,20 @@ export default function AdmissionCalculator({ hidePrevious }) {
               </div>
               <div className={styles.subGrid}>
                 <div className={styles.formGroup}>
-                  <label>Institution</label>
-                  <input type="text" placeholder="e.g. Delhi University" {...register('undergraduate.institution')} className={styles.input} />
+                  <label>Institution *</label>
+                  <input type="text" placeholder="e.g. Delhi University" {...register('undergraduate.institution', { required: 'Institution is required' })} className={styles.input} />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>Degree / Program</label>
-                  <input type="text" placeholder="e.g. B.Tech Computer Science" {...register('undergraduate.degree')} className={styles.input} />
+                  <label>Degree / Program *</label>
+                  <input type="text" placeholder="e.g. B.Tech Computer Science" {...register('undergraduate.degree', { required: 'Degree / Program is required' })} className={styles.input} />
                 </div>
                 <div className={styles.formGroup}>
                   <label>Percentage or CGPA</label>
-                  <input type="number" step="0.01" placeholder="e.g. 85 or 8.5" {...register('undergraduate.score')} className={styles.input} />
+                  <input type="number" step="0.01" placeholder="e.g. 85 or 8.5" {...register('undergraduate.score', { required: 'Percentage or CGPA is required' })} className={styles.input} />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>Year of Completion</label>
-                  <input type="number" placeholder="e.g. 2023" {...register('undergraduate.year')} className={styles.input} />
+                  <label>Year of Completion *</label>
+                  <input type="number" placeholder="e.g. 2023" {...register('undergraduate.year', { required: 'Year of completion is required' })} className={styles.input} />
                 </div>
               </div>
             </div>
@@ -299,11 +307,11 @@ export default function AdmissionCalculator({ hidePrevious }) {
               {showPostgraduate && (
                 <div className={styles.subGrid}>
                   <div className={styles.formGroup}>
-                    <label>Institution</label>
+                    <label>Institution *</label>
                     <input type="text" placeholder="e.g. IIM Bangalore" {...register('postgraduate.institution')} className={styles.input} />
                   </div>
                   <div className={styles.formGroup}>
-                    <label>Degree / Program</label>
+                    <label>Degree / Program *</label>
                     <input type="text" placeholder="e.g. MBA Finance" {...register('postgraduate.degree')} className={styles.input} />
                   </div>
                   <div className={styles.formGroup}>
@@ -311,7 +319,7 @@ export default function AdmissionCalculator({ hidePrevious }) {
                     <input type="number" step="0.01" placeholder="e.g. 75 or 3.7" {...register('postgraduate.score')} className={styles.input} />
                   </div>
                   <div className={styles.formGroup}>
-                    <label>Year of Completion</label>
+                    <label>Year of Completion *</label>
                     <input type="number" placeholder="e.g. 2025" {...register('postgraduate.year')} className={styles.input} />
                   </div>
                 </div>
@@ -374,8 +382,8 @@ export default function AdmissionCalculator({ hidePrevious }) {
               )}
 
               <div className={styles.formGroup}>
-                <label>Budget (Total)</label>
-                <select {...register('budget')} className={styles.input}>
+                <label>Budget (Total) *</label>
+                <select {...register('budget', { required: 'Budget is required' })} className={styles.input}>
                   <option value="">Select Budget</option>
                   <option value="under10">Under 10 Lakhs</option>
                   <option value="10to20">10 - 20 Lakhs</option>
@@ -385,8 +393,8 @@ export default function AdmissionCalculator({ hidePrevious }) {
               </div>
 
               <div className={styles.formGroup}>
-                <label>Work Experience (Years)</label>
-                <select {...register('workExperience')} className={styles.input}>
+                <label>Work Experience (Years) *</label>
+                <select {...register('workExperience', { required: 'Work experience is required' })} className={styles.input}>
                   <option value="">Select Experience</option>
                   <option value="0">Fresher (0 years)</option>
                   <option value="1to3">1 - 3 years</option>
