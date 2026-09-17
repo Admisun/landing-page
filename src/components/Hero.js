@@ -42,7 +42,7 @@ export default function Hero() {
               rel="noopener noreferrer"
               className="btn btn-secondary"
             >
-              Talk to Consultant
+              Get expert advice
             </a>
           </div>
         </div>
