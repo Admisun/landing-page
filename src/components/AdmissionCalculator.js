@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { COUNTRIES, DEGREE_OPTIONS, DEGREE_TEST_TYPES, ENGLISH_PROFICIENCY_TESTS } from '@/lib/formOptions';
 import { buildPrefillFromParsedResume } from '@/lib/resumePrefill';
 import UniversityCombobox from './UniversityCombobox';
+import CityCombobox from './CityCombobox';
 
 const DEFAULT_VALUES = {
   undergraduate: { institution: '', degree: '', score: '', year: '' },
@@ -422,12 +423,18 @@ const onSubmit = async (data) => {
 
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                 <label>Preferred Cities</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Mumbai, Delhi, Bangalore"
-                  {...register('preferredCities')}
-                  className={styles.input}
+                <Controller
+                  name="preferredCities"
+                  control={control}
+                  render={({ field }) => (
+                    <CityCombobox
+                      value={field.value}
+                      onChange={field.onChange}
+                      country={watchedCountry}
+                    />
+                  )}
                 />
+                <p className={styles.hint}>Search cities worldwide, or type a city and add it as a custom entry.</p>
               </div>
             </div>
 

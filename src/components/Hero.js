@@ -33,7 +33,7 @@ export default function Hero() {
             </a>
 
             <Link href={user ? "/dashboard" : "/login"} className="btn btn-secondary">
-              Talk to AI Strategist
+              Talk to an AI Strategist
             </Link>
 
             <a

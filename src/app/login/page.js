@@ -44,7 +44,7 @@ export default function Login() {
   return (
     <div className={styles.authContainer}>
       <div className={styles.authCard}>
-        <h1 className={styles.title}>Welcome Back</h1>
+        <h1 className={styles.title}>Welcome</h1>
         <p className={styles.subtitle}>Log in to access your AI admission strategist.</p>
         
         {error && <div className={styles.errorAlert}>{error}</div>}
